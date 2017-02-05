@@ -1,0 +1,95 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>HealthNet - ForceX</title>
+        <link rel='stylesheet' href = "{% static 'fullcalendar-3.0.1/fullcalendar.css' %}" />
+        <script src = "{% static 'fullcalendar-3.0.1/lib/jquery.min.js' %}"></script>
+        <script src = "{% static 'fullcalendar-3.0.1/lib/moment.min.js' %}"></script>
+        <script src = "{% static 'fullcalendar-3.0.1/fullcalendar.js' %}"></script>
+        <link rel="stylesheet" type="text/css" href = "{% static 'health/css/bootstrap.css' %}"/>
+        <script type = "text/javascript" src = "{% static 'bootstrap.js' %}"></script>
+        <script type = "text/javascript" src = "{% static 'main.js' %}"></script>
+        <link rel="stylesheet" type="text/css" href = "{% static 'health/css/override.css' %}"/>
+    </head>
+    <body>
+
+        <img src = "{% static 'health/img/healthnetBanner(2).png' %}" id = "banner"/>
+
+        <!-- NAVBAR BEGIN -->
+        <nav class = "navbar navbar-default">
+            <div class = "container-fluid">
+
+                <div class = "navbar-header">
+                    {% if user.is_authenticated %}
+                        <a href = "/accounts/calendar/" class = "navbar-brand">
+                    {% else %}
+                        <a href = "/home/" class = "navbar-brand">
+                    {% endif %}
+                        <span id = "navBrand">HealthNet</span>
+                    </a>
+                </div>
+
+                {% if user.is_authenticated %}
+
+                    <div class="collapse navbar-collapse">
+                        <ul class = "nav navbar-nav">
+                            <li><a href = "/accounts/calendar/">Calendar</a></li>
+                            <li><a href = "/accounts/edit_patient_profile/">Update Information for <span id = "navUsername">{{ user.first_name }} {{ user.last_name }}</span></a></li>
+                        </ul>
+                        <ul class = "nav navbar-nav navbar-right">
+                            <li><a href = "/accounts/logout/">Logout</a></li>
+                        </ul>
+                    </div>
+
+                {% endif %}
+
+            </div>
+        </nav>
+        <!-- NAVBAR END -->
+
+        <!--
+        <div class="page-header">
+            <a href="#" class="top-menu"><span class="glyphicon glyphicon-plus"></span></a>
+            <h1>
+                {% if user.is_authenticated %}
+                    <a href = "/accounts/calendar/">
+                {% else %}
+                    <a href = "/home/">
+                {% endif %}
+                    HealthNet
+                </a>
+            </h1>
+            {% if user.is_authenticated %}
+                <a href = "/accounts/logout/"><button class = "btn btn-primary">Logout</button></a>
+            {% endif %}
+
+        </div>
+        -->
+        <div class="content container">
+            <div class="row">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </div>
+
+        <div id = "footer">
+            <p>ForceX</p>
+            <p>2016</p>
+        </div>
+
+    </body>
+
+    <script>
+        $(document).ready(function(){
+           if ($("body").height() <= $(window).height()) {
+               console.log("should workkkk");
+               $("#footer").css("bottom", "0px");
+               $("#footer").css("position", "absolute");
+               $("#footer").css("width", "100%");
+            }
+        });
+    </script>
+
+</html>

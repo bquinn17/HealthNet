@@ -1,0 +1,16 @@
+{% extends "health/base.html" %}
+
+{% block content %}
+    <div class ="col-lg-6 col-lg-offset-3">
+        <h3>{{ message }}
+            <br>
+            Number of patients : {{ number_patients }}
+            <br>
+            Number of patient visits : {{ number_patient_visits }}
+            <br>
+            Average number of hospital visits per patient : {{ average_number_hospital_visits_per_patient }}
+            <br>
+            Average patient stay time : {{ average_patient_stay_time }}
+        </h3>
+    </div>
+{% endblock %}

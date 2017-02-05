@@ -1,0 +1,7 @@
+from django.contrib import admin
+from .models.doctor import Doctor
+from .models.nurse import Nurse
+from .models.simple_models import Appointment, Hospital
+# Register your models here.
+
+admin.site.register(Doctor,Nurse,Appointment, Hospital)

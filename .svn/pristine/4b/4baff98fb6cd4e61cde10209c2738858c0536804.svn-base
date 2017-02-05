@@ -1,0 +1,64 @@
+{% extends 'health/base.html' %}
+{% block content %}
+
+    <!-- MODAL BEGIN -->
+    {% for patient in patients %}
+    <div class = "modal" id = "medical{{ patient.user.id }}">
+        <div class = "modal-dialog">
+            <div class = "modal-content">
+                <div class = "modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class = "modal-title">Update Medical Info for <span style = "color: #DF691A">{{ patient.user.first_name }} {{ patient.user.last_name }}</span></h4>
+                </div>
+                <div class = "modal-body">
+                    A form will go here...
+                </div>
+                <div class = "modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class = "col-lg-8 col-lg-offset-2">
+
+        <h2>
+            List of Patients
+        </h2>
+
+        <div class = "well well-lg">
+
+            {% for patient in patients %}
+
+                <div class="panel panel-info">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">{{ patient.user.first_name }} {{ patient.user.last_name }} - <span style = "color: #DF691A">#{{ patient.user.id }}</span></h3>
+                    </div>
+                    <div class="panel-body">
+                        <a href = "/media/{{ patient.medical_information }}">Download Medical Information</a>
+                        <a href = "#" name = "{{ patient.user.id }}" class = "btn btn-info updateMedButton">Update Medical Information</a>
+                    </div>
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    <script>
+
+        $(document).ready(function(){
+
+            $(".updateMedButton").click(function(){
+
+                $("#medical"+($(this).attr("name"))).modal('show');
+
+            });
+
+        });
+
+    </script>
+
+{% endblock %}

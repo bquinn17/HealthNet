@@ -1,0 +1,18 @@
+from django.db import models
+from health.models.user import User
+#from health.models import Appointment
+
+
+class Actor(models.Model, User):
+
+    class Meta:
+        app_name = 'health'
+        db_table = 'health_Actor'
+
+    def create_appointment(self):
+        #TODO
+        return
+
+    def update_appointment(self):
+        #TODO
+        return

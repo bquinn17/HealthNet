@@ -1,0 +1,16 @@
+2016-11-30 18:30:47		Patient	username:	phylis@g.com                                                		Action: Patient Registered
+2016-11-30 18:34:15		Patient	username:	phylis@g.com                                                		Action: Appointment created for 2016-11-30 18:10:00 with Dr. Blavis  at the lucas center
+2016-11-30 18:39:02		Patient	username:	phylis@g.com                                                		Action: Profile information updated
+2016-11-30 18:41:05		Patient	username:	phylis@g.com                                                		Action: Message sent to phylis@g.com
+2016-11-30 18:43:10		Patient	username:	phylis@g.com                                                		Action: Message sent to phylis@g.com
+2016-12-03 00:50:51		Doctor	username:	doctor@gmail.com                                             		Action: Prescription added to: the pills
+2016-12-03 19:06:34		Doctor	username:	doctor@gmail.com                                             		Action: Prescription added to: the pills
+2016-12-03 19:06:51		Doctor	username:	doctor@gmail.com                                             		Action: Patient : 6 (phylis@g.com) discharged from the lucas center
+2016-12-03 19:30:38		Doctor	username:	doctor@gmail.com                                             		Action: Patient : 6 (phylis@g.com) discharged from the lucas center
+2016-12-03 19:30:39		Doctor	username:	doctor@gmail.com                                             		Action: Patient 6(phylis nurt@g.com) transferred to hospital 1(the lucas center) For the following reason: "sdfkjsdlkfjs"
+2016-12-03 19:51:07		Doctor	username:	doctor@gmail.com                                             		Action: Patient : 6 (phylis@g.com) discharged from the lucas center
+2016-12-03 19:51:07		Doctor	username:	doctor@gmail.com                                             		Action: Patient 6(phylis nurt@g.com) transferred to hospital 1(the lucas center) For the following reason: "reason"
+2016-12-03 19:51:29		Doctor	username:	doctor@gmail.com                                             		Action: Patient : 6 (phylis@g.com) discharged from the lucas center
+2016-12-03 19:51:29		Doctor	username:	doctor@gmail.com                                             		Action: Patient 6(phylis nurt@g.com) transferred to hospital 1(the lucas center) For the following reason: "reason"
+2016-12-03 19:51:48		Doctor	username:	doctor@gmail.com                                             		Action: Patient : 6 (phylis@g.com) discharged from the lucas center
+2016-12-03 19:51:48		Doctor	username:	doctor@gmail.com                                             		Action: Patient 6(phylis nurt@g.com) transferred to hospital 1(the lucas center) For the following reason: "Reason"

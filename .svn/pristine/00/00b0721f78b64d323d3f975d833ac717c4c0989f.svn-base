@@ -1,0 +1,23 @@
+{% extends 'health/base.html' %}
+
+<!-- Will most definitely change this file. Simply wanted a placeholder for now. -->
+{% block content %}
+<div class = "col-lg-4 col-lg-offset-4">
+
+    <div style = "margin-top: 10%" class = "row">
+        <h1 style = "border-bottom: 1px solid white">HealthNet</h1>
+        <p>...is not done yet....</p>
+    </div>
+
+    <div>
+        <a href="/accounts/login/" class="btn btn-primary" >Login</a>
+        <br/><a href="/accounts/register/" class="btn btn-primary" >Sign up</a>
+
+    </div>
+
+    <footer class = "row">
+        <p style = "font-size: 10px">ForceX 2016</p>
+    </footer>
+
+</div>
+{% endblock %}

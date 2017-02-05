@@ -1,0 +1,23 @@
+{% extends 'health/base.html' %}
+{% block content %}
+    <div class = "col-lg-6 col-lg-offset-3">
+        <div id="registerForm">
+
+            <div class="well well-lg">
+
+                <form enctype="multipart/form-data" method="POST" class="post-form form-horizontal">{% csrf_token %}
+
+
+                    <fieldset>
+                        <legend>New Patient</legend>
+                    </fieldset>
+                    {{ form.as_p }}
+                    <br/>
+                    <button class="btn btn-primary" type="submit">Register</button>
+                </form>
+
+            </div>
+        </div>
+        <p><a href="/accounts/login/" class="btn btn-lg btn-info btn-block">Return to Login</a> </p>
+    </div>
+{% endblock %}

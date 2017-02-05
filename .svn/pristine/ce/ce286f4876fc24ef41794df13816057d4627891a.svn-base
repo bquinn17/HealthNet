@@ -1,0 +1,69 @@
+{% extends 'health/base.html' %}
+{% block content %}
+    <div class = "col-lg-6 col-lg-offset-3">
+
+        {% if email_invalid %}
+            <div class = "alert alert-danger alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4>Invalid Email</h4>
+                <p>The email entered has already been used.</p>
+            </div>
+        {% elif message %}
+            <div class = "alert alert-danger alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4>Error</h4>
+                <p>{{ message }}</p>
+            </div>
+        {% elif h_name_invalid %}
+            <div class = "alert alert-danger alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4>Invalid Hospital Name</h4>
+                <p>The hospital name entered has already been used.</p>
+            </div>
+        {% elif p_name_invalid %}
+            <div class = "alert alert-danger alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4>Invalid Prescription Name</h4>
+                <p>The prescription name entered has already been used.</p>
+            </div>
+        {% endif %}
+
+        {% if display_errors %}
+            <div class = "alert alert-dismissable alert-danger">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4>Oops!</h4>
+                <p>The following errors were found in the form:</p>
+                <ul>
+                    {% for error in f_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <div id="registerForm">
+
+            <div class="well well-lg">
+
+                <form enctype="multipart/form-data" method="POST" class="post-form form-horizontal">{% csrf_token %}
+                    <fieldset>
+                        <legend>{{ title }}</legend>
+                    </fieldset>
+                    {% if display_extra_message %}
+                        <p>{{ extra_message }}</p>
+                    {% endif %}
+                    {{ form.as_p }}
+                    <div class = "row">
+                        {% if deletable %}
+                            <button class = "col-lg-2 col-lg-offset-7 btn btn-primary" type="submit" name="update">{{ submit }}</button>
+                            <button class = "col-lg-2 col-lg-offset-1 btn btn-danger" type="submit" name="delete">Delete</button>
+                        {% else %}
+                            <button class="btn btn-primary" type="submit">{{ submit }}</button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+        <p><a href="{{ cancel_link }}" class = "btn btn-lg btn-info btn-block">{{ cancel }}</a> </p>
+    </div>
+{% endblock %}

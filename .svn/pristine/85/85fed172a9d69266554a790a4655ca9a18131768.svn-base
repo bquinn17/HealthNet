@@ -1,0 +1,11 @@
+
+# __init__.py
+# from app.old_code.module1 import MyClass
+# from app.old_code.module2 import AnotherClass, function_one
+# __all__ = ['User', 'AnotherClass', 'function_one']
+
+# from health.old_code.user import User
+# from health.old_code.actor import Actor
+# from health.old_code.doctor import Doctor
+# from health.old_code.patient import Patient
+# __all__ = ('User', 'Actor', )

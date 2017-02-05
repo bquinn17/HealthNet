@@ -1,0 +1,25 @@
+{% extends 'health/base.html' %}
+
+{% block content %}
+
+    {% for test in test_list %}
+        <div class = "row">
+            <div class = "col-lg-4 col-lg-offset-2 modalField">
+                Test:
+            </div>
+            <div class = "col-lg-4">
+                {{ test.description }}
+            </div>
+        </div>
+        <div class = "row">
+            <div class = "col-lg-4 col-lg-offset-2 modalField">
+                Results:
+            </div>
+            <div class = "col-lg-4">
+                {# TODO make this a download tests #}
+                <a href="/uploads/{{ test.results }}" class="btn btn-lg-1 btn-info">Download</a><br>
+            </div>
+        </div>
+    {% endfor %}
+
+{% endblock %}

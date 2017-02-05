@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <link rel="stylesheet" type="text/css" href = "css/bootstrap.css"/>
+        <script type = "text/javascript" src = "js/bootstrap.js"></script>
+        <script type = "text/javascript" src = "js/main.js"></script>
+        <link rel="stylesheet" type="text/css" href = "css/override.css"/>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+        <title>Team 07a Resources</title>
+    </head>
+
+
+    <body>
+
+        <div id = "dlHeader" class = "row">
+            <img src = "img/forcexLogo.png"/>
+        </div>
+
+        <div class = "row">
+            <div class = "col-lg-9 col-lg-offset-2">
+
+                <legend>Downloads</legend>
+
+                <a href = "resources/testplan.xlsx">
+                    <img class = "dlPanel" src = "img/testPlanImg.png"/>
+                </a>
+
+                <a href = "resources/requirements.docx">
+                    <img class = "dlPanel" src = "img/requirementsImg.png"/>
+                </a>
+
+            </div>
+        </div>
+
+        <div class = "row">
+            <div class = "col-lg-9 col-lg-offset-2">
+
+                <a href = "resources/README.txt">
+                    <img class = "dlPanel" src = "img/readmeImg.png"/>
+                </a>
+
+                <a href = "./code.zip">
+                    <img class = "dlPanel" src = "img/codeImg.png"/>
+                </a>
+
+            </div>
+        </div>
+
+    </body>
+
+    <script>
+
+        $(document).ready(function(){
+
+            $(".dlPanel").hover(
+                    function(){
+                        $(this).animate({opacity: '1.0'}, {duration: 100});
+                    },
+                    function(){
+                        $(this).animate({opacity: '0.5'}, {duration: 100});
+                    }
+            );
+
+        });
+
+    </script>
+
+</html>

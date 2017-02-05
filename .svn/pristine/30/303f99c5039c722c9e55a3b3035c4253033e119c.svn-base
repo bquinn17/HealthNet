@@ -1,0 +1,176 @@
+from django.core.files.storage import FileSystemStorage
+from django.db import models
+
+# Create your old_code here.
+from django import forms
+from django.contrib.auth.models import User
+from HealthNet import settings
+
+
+class Patient(User, models.Model):
+    user = models.OneToOneField(User)
+    medical_information = models.FileField(storage=FileSystemStorage(location=settings.MEDIA_ROOT), upload_to='logos',
+                                           default='settings.MEDIA_ROOT/logos/anonymous.jpg')
+
+    # class Meta:
+    #     app_name = 'health'
+    #     db_table = 'health_Patient'
+
+    # prescriptions = []
+    # test_results = []
+    # emergency_contact = old_code.CharField(max_length=50)
+
+    # Should we add hospital as a field?
+
+    # def update_profile(self, username, name, email, contact):
+    #     super.username = username
+    #     super.name = name
+    #     super.email = email
+    #     self.emergency_contact = contact
+    #     return
+    #
+    # def export_info(self):
+    #     for prescription in self.prescriptions:
+    #         print(prescription)
+    #     for test_result in self.test_results:
+    #         print(test_result)
+    #     return
+
+
+class Appointment(models.Model):
+    date = models.DateTimeField('Scheduled Date')
+    description = models.CharField(max_length=200)
+
+
+class Hospital(models.Model):
+    hospital_name = models.CharField(max_length=50)
+    # hospital_id = Primary key is implied
+
+class Nurse(User, models.Model):
+    working_hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE)
+
+class Doctor(User, models.Model):
+    hospitals = models.ManyToManyField(Hospital)
+
+# from django.db import models
+# from django import forms
+# from .actor import Actor
+#
+#
+# class Patient(models.Model, Actor):
+#     # class Meta:
+#     #     app_name = 'health'
+#     #     db_table = 'health_Patient'
+#
+#     prescriptions = []
+#     test_results = []
+#     emergency_contact = models.CharField(max_length=50)
+#
+#     # Should we add hospital as a field?
+#
+#     def update_profile(self, username, name, email, contact):
+#         super.username = username
+#         super.name = name
+#         super.email = email
+#         self.emergency_contact = contact
+#         return
+#
+#     def export_info(self):
+#         for prescription in self.perscriptions:
+#             print(prescription)
+#         for test_result in self.test_results:
+#             print(test_result)
+#         return
+#
+#
+# class PatientForm(forms.ModelForm):  # form for patient updating basic profile info (email, emergency contact)
+#     class Meta:
+#         model = Patient
+#         email = forms.EmailField()
+#         emergency_contact = forms.CharField()
+#         fields = ['email', 'emergency_contact']
+
+
+# class Actor(models.Model, User):
+#     # Do we need this?
+#     appointments = []
+#
+#     #class Meta:
+#         # app_name = 'health'
+#         # db_table = 'health_Actor'
+#
+#     def create_appointment(self):
+#         self.appointments += Appointment(timezone.now(), "This is the description")
+#         return
+#
+#     def update_appointment(self):
+#         return
+
+# from django.db import models
+# from .actor import Actor
+# from .patient import Patient
+#
+#
+# class Nurse(models.Model, Actor):
+#     # class Meta:
+#     #     app_name = 'health'
+#     #     db_table = 'health_Nurse'
+#
+#     # Defaults to 0. When a new Nurse is created, this will change
+#     working_hospital_id = 0
+#
+#     def update_patient_medical_info(self):
+#         self.working_hospital_id = 1
+#         return
+#     # Maybe change this?
+#
+#     def remove_prescription(self, patient):
+#         self.working_hospital_id += 1
+#         return
+#
+#     def add_prescription(self, patient, medicine_name):
+#         """
+#         Adds presicription to patient's list of prescriptions
+#         @param patient - Patient that will receive the prescription
+#         @param medicine_name - Name of prescription to be added to patient's list
+#         :param patient:
+#         :param medicine_name:
+#         :return:
+#         """
+#         patient.prescriptions.append(medicine_name)
+#         return
+#
+#     def admit_patient(self, patient):
+#         return
+#
+#     def discharge_patient(self, patient):
+#         """
+#         Discharges patient from the system. Patient is removed from database
+#         @param patient - Patient to be removed from system
+#         :param patient:
+#         :return:
+#         """
+#         Patient.objects.filter(username = patient.username, name = patient.name).delete()
+#         return
+
+# from django.db import models
+# from .nurse import Nurse
+# from .simple_models import Hospital
+#
+#
+# class Doctor(models.Model, Nurse):
+#     # class Meta:
+#     #     app_name = 'health'
+#     #     db_table = 'health_Doctor'
+#
+#     hospitals = models.ForeignKey(Hospital)    #Foreign key- many to one relationship, alright to use instead of list?
+#     position = models.CharField(max_length=50)
+#
+#     def upload_test_results(self, patient, file_location):
+#         return
+#
+#     def patient_transfer(self, patient, hospital):
+#         return
+#
+#     def release_test_results(self, patient):
+#         return

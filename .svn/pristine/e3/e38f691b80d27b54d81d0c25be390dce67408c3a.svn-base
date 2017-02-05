@@ -1,0 +1,24 @@
+{% extends 'health/base.html' %}
+{% block content %}
+    <div class = "col-lg-6 col-lg-offset-3">
+        <div id="logSearchForm">
+
+            <div class="well well-lg">
+
+                <form method="POST" class="post-form form-horizontal">{% csrf_token %}
+
+
+                    <fieldset>
+                        <legend>Log search</legend>
+                    </fieldset>
+                    You may search by a user OR a hospital. <br><br>
+                    {{ form.as_p }}
+                    <br/>
+                    <button class="btn btn-primary" type="submit">Search</button>
+                </form>
+
+            </div>
+        </div>
+        <p><a href="/accounts/calendar/" class="btn btn-lg btn-info btn-block">Cancel</a> </p>
+    </div>
+{% endblock %}

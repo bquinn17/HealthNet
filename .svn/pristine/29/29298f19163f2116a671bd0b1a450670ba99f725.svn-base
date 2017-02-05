@@ -1,0 +1,22 @@
+{#{% extends 'health/baseline.html' %}#}
+{% block content %}
+    <div id = "registerForm" class = "col-lg-6 col-lg-offset-3">
+			<h1>New patient</h1>
+
+			<div class = "well well-lg">
+
+				<form method="POST" class="post-form form-horizontal">{% csrf_token %}
+
+					<fieldset>
+						<div class = "form-group">
+							{{ form.as_p }}
+							<br/><button class = "btn btn-primary" type="submit" >Save</button>
+						</div>
+					</fieldset>
+
+				</form>
+
+			</div>
+
+		</div>
+{% endblock %}

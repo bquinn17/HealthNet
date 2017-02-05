@@ -1,0 +1,27 @@
+from django.db import models
+
+
+class User(models.Model):
+
+    class Meta:
+        app_name = 'health'
+        db_table = 'health_User'
+
+    # user_id = Implied by the primary key
+    name = models.CharField(max_length=50)
+    email = models.EmailField()
+    username = models.CharField(max_length=20) # this needs to be unique
+    # password = encrypted field
+    date_of_birth = models.DateTimeField
+
+    def login(self, username, password):
+        # TODO
+        return
+
+    def logout(self):
+        # TODO
+        return
+
+    def private_message(self):
+        # TODO
+        return

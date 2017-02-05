@@ -1,0 +1,97 @@
+{% extends 'health/base.html' %}
+{% block content %}
+
+    <!-- MODAL START -->
+    {% for patient in patients %}
+    <div class = "modal" id = "dischargeWarning{{ patient.id }}">
+        <div class = "modal-dialog">
+            <div class = "modal-content">
+                <div class = "modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                </div>
+                <div class = "modal-body">
+                    <div class = "row">
+                        <h4>Are you sure you want to discharge {{ patient.get_full_name }}</h4>
+                    </div>
+                    <div class = "row">
+                        <div class = "col col-lg-2 co-lg-offset-10">
+                            <a href = "/accounts/discharge_patient/{{ patient.id }}/" class = "btn btn- btn-primary">Yes</a>
+                        </div>
+                    </div>
+                </div>
+                <div class = "modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    <!-- MODAL END -->
+
+    <div class = "col-lg-8 col-lg-offset-2">
+
+        {% if displayMessage %}
+        <div class = "row">
+            <div class = "alert alert-dismissable alert-success">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4>Success!</h4>
+                <p>{{ message }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class = "row">
+            <a href = "/accounts/admit_patient/" class = "btn btn-success">+ Admit a New Patient</a>
+        </div>
+
+        <h2>
+            List of Patients
+        </h2>
+
+        <div class = "well well-lg">
+
+            {% for patient in patients %}
+
+                <div class="panel panel-info">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">{{ patient.user.first_name }} {{ patient.user.last_name }} - <span style = "color: #DF691A">#{{ patient.user.id }}</span></h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class = "col-lg-3">
+                            <a href = "/media/{{ patient.medical_information }}"
+                               class = "btn btn-success btn-sm btn-block">Download Information</a>
+                        </div>
+                        <div class = "col-lg-3">
+                            <a href = "update_med_info/{{ patient.id }}/"
+                               class = "btn btn-info btn-sm btn-block">Update Information</a>
+                        </div>
+                        <div class = "col-lg-3">
+                            <button id = "{{ patient.id }}"
+                                    class = "btn btn-danger btn-sm btn-block dischargeButton">Discharge Patient</button>
+                        </div>
+                        <div class = "col-lg-3">
+                            <a href = "/accounts/transfer_patient/{{ patient.id }}/"
+                               class = "btn btn-warning btn-sm btn-block dischargeButton">Transfer Patient</a>
+                        </div>
+                    </div>
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    <script>
+
+        $(document).ready(function(){
+            $(".dischargeButton").click(function(){
+                var buttId = this.id;
+                $("#dischargeWarning" + buttId).modal('show');
+
+            });
+        });
+
+    </script>
+
+{% endblock %}

@@ -1,0 +1,25 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>HealthNet - ForceX</title>
+        <link rel="stylesheet" type="text/css" href = "{% static 'health/bootstrap.css' %}"/>
+        <link rel="stylesheet" type="text/css" href = "{% static 'health/override.css' %}"/>
+    </head>
+    <body>
+        <div class="page-header">
+            <a href="#" class="top-menu"><span class="glyphicon glyphicon-plus"></span></a>
+            <h1><a href="/">HealthNet</a></h1>
+        </div>
+        <div class="content container">
+            <div class="row">
+                <!-- Everything is going to be contained within a size 6 column. This can change if we need it to -->
+                <div class="col-lg-6 col-lg-offset-3">
+                    {% block content %}
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

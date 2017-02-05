@@ -1,0 +1,13 @@
+{% extends "health/base.html" %}
+
+{% block content %}
+    <div class ="col-lg-6 col-lg-offset-3">
+        <h3>{{ message }}
+            <br>
+            {% for i in errors %}
+            {{ i }}
+            <br>
+            {% endfor %}
+        </h3>
+    </div>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends 'health/base.html' %}
+
+{% block content %}
+
+    <!-- MESSAGE BEGIN -->
+    {% if displayMessage %}
+    <div class = "row">
+
+        <div class = "col-lg-8 col-lg-offset-2">
+
+            <div class = "alert alert-dismissable alert-success">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4>Success!</h4>
+                <p>{{ message }}</p>
+            </div>
+
+        </div>
+
+    </div>
+    {% endif %}
+    <!-- MESSAGE END -->
+
+    <!-- ACTION COLUMN BEGIN -->
+    {% if not user.is_staff %}
+    <div class = "well well-lg col-lg-3" id = "actionWell">
+        <legend>Actions</legend>
+        <a href = "/appointment/" class="btn btn-lg btn-success btn-block">
+            Create Appointment
+        </a>
+
+        {% for group in user.groups.all %}
+
+            {% if group.name != "Patient" %}
+            <a href = "/accounts/add_prescription/" class = "btn btn-lg btn-info btn-block">
+                Prescribe Drug
+            </a>
+            <a href = "/accounts/check_in_patient/" class = "btn btn-lg btn-warning btn-block">
+                Admit Patient
+            </a>
+            {% endif %}
+            
+        {% endfor %}
+
+    </div>
+    {% endif %}
+    <!-- ACTION COLUMN END -->
+
+    {% if user.is_staff %}
+        <div class = "col-lg-8 col-lg-offset-2">
+    {% else %}
+        <div class = "col-lg-8 col-lg-offset-1">
+    {% endif %}
+
+            <div id = "calendar">
+                <!-- Calendar goes here -->
+            </div>
+
+        </div>
+
+    <!-- MODAL BEGIN -->
+        {% for appointment in appointment_list %}
+            <div class = "modal" id = "{{ appointment.id }}">
+            <div class = "modal-dialog">
+                <div class = "modal-content">
+                    <div class = "modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                        <h4 class = "modal-title">{{ appointment.description }}</h4>
+                    </div>
+                    <div class = "modal-body">
+                        <div class = "row">
+                            <div class = "col-lg-4 col-lg-offset-2 modalField">
+                                Date/Time:
+                            </div>
+                            <div class = "col-lg-4">
+                                {{ appointment.start_date|date:"M d, Y h:iA"}}
+                            </div>
+                        </div>
+                        <div class = "row">
+                            <div class = "col-lg-4 col-lg-offset-2 modalField">
+                                Patient:
+                            </div>
+                            <div class = "col-lg-4">
+                                {{ appointment.patient }}
+                            </div>
+                        </div>
+                        <div class = "row">
+                            <div class = "col-lg-4 col-lg-offset-2 modalField">
+                                Doctor:
+                            </div>
+                            <div class = "col-lg-4">
+                                {{ appointment.doctor }}
+                            </div>
+                        </div>
+                        <div class = "row">
+                            <div class = "col-lg-4 col-lg-offset-2 modalField">
+                                Hospital:
+                            </div>
+                            <div class = "col-lg-4">
+                                {{ appointment.hospital.hospital_name }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class = "modal-footer">
+                         <a href="/accounts/update_appointment/{{ appointment.pk }}/"><button class="btn btn-info">Update</button></a>
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    <!-- MODAL END -->
+
+    <script type = "text/javascript">
+
+        $(document).ready(function(){
+
+
+            $("#calendar").fullCalendar({
+
+                {% if isNurse %}
+                    defaultView: 'basicWeek',
+                {% endif %}
+
+                header: {
+                    left: 'title',
+                    center: 'month,basicWeek,listWeek',
+                    right: 'today prev,next'
+                },
+
+                events : [
+
+                    {% for appointment in appointment_list %}
+
+                        {
+                            id: {{ appointment.id }},
+                            title: "{{ appointment.description }}" + " - " + "{{ appointment.hospital.hospital_name }}",
+                            start: "{{ appointment.start_date|date:"c" }}"
+                        },
+
+                    {% endfor %}
+
+                ],
+
+                fixedWeekCount: true,
+                eventColor: '#d9691a',
+
+                eventClick: function(event) {
+                    $("#"+event.id).modal('show');
+                    return false;
+                }
+
+            });
+
+        });
+
+    </script>
+
+{% endblock %}

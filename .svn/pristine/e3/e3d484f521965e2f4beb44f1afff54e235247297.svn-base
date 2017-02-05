@@ -1,0 +1,9 @@
+from django.contrib import admin
+from health.models import Patient
+from health.models import Appointment
+# from .old_code.doctor import Doctor
+# from .old_code.nurse import Nurse
+# from .old_code.simple_models import Appointment, Hospital
+# Register your old_code here.
+
+admin.site.register(Patient)

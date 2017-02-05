@@ -1,0 +1,160 @@
+{% extends 'health/base.html' %}
+
+{% block content %}
+
+    <div class = "col-lg-4">
+        <a href = "/appointment/" class = "btn btn-lg btn-success btn-block">
+            + Create new Appointment
+        </a>
+        <!-- Taken care of in NavBar
+        <a href = "/accounts/edit_patient_profile/" class = "btn btn-lg btn-info btn-block">
+            Update Information
+        </a>
+        -->
+    </div>
+
+    <div class = "col-lg-8">
+
+        <div id = "calendar">
+            <!-- Calendar goes here -->
+        </div>
+
+    </div>
+
+    <!-- MODAL BEGIN -->
+    <div class = "modal" id = "modalTest">
+            <div class = "modal-dialog">
+                <div class = "modal-content">
+                    <div class = "modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                        <h4 class = "modal-title">Release R1</h4>
+                    </div>
+                    <div class = "modal-body">
+                        <div class = "row">
+                            <div class = "col-lg-4 col-lg-offset-2 modalField">
+                                Date/Time:
+                            </div>
+                            <div class = "col-lg-4">
+                                2016-10-03 8:00:00
+                            </div>
+                        </div>
+                        <div class = "row">
+                            <div class = "col-lg-4 col-lg-offset-2 modalField">
+                                Patient:
+                            </div>
+                            <div class = "col-lg-4">
+                                ForceX
+                            </div>
+                        </div>
+                        <div class = "row">
+                            <div class = "col-lg-4 col-lg-offset-2 modalField">
+                                Doctor:
+                            </div>
+                            <div class = "col-lg-4">
+                                Nat Martin
+                            </div>
+                        </div>
+                        <div class = "row">
+                            <div class = "col-lg-4 col-lg-offset-2 modalField">
+                                Hospital:
+                            </div>
+                            <div class = "col-lg-4">
+                                have mercy pls
+                            </div>
+                        </div>
+                    </div>
+                    <div class = "modal-footer">
+                        <a href = "#"><button class = "btn btn-info">Update</button></a>
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <!--
+    {% for appointmet in appointment_list %}
+        <div class = "modal" id = "modal{{ appointment.id }}">
+            <div class = "modal-dialog">
+                <div class = "modal-content">
+                    <div class = "modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                        <h4 class = "modal-title">{{ appointment.description }}</h4>
+                    </div>
+                    <div class = "modal-body">
+                        <div class = "row">
+                            <p>Date/Time: {{ appointment.start }}</p>
+                            <p>Patient: {{ appointment.patient }}</p>
+                            <p>Doctor: {{ appointment.doctor }}</p>
+                            <p>Hospital: {{ appointment.hospital.hospital_name }}</p>
+                        </div>
+                        <div class = "row">
+                            <a href = "#"><button class = "btn btn-info btn-block">Update</button></a>
+                        </div>
+                    </div>
+                    <div class = "modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        -->
+    {% endfor %}
+    <!-- MODAL END -->
+
+    <script type = "text/javascript">
+
+        $(document).ready(function(){
+
+            $("#calendar").fullCalendar({
+                header: {
+                    left: 'title',
+                    {% if isNurse %}
+                        center: 'basicWeek,listWeek',
+                    {% else %}
+                        center: 'month,listMonth',
+                    {% endif %}
+                    right: 'today prev,next'
+                },
+
+                events : [
+                    // Test event
+                    {
+                        id: 0,
+                        title: "Release R1",
+                        start: "2016-10-03",
+                    },
+
+                    // Might work once there is a list of appointments to call from
+                    {% for appointment in appointment_list %}
+
+                        {
+                            id: {{ appointment.id }},
+                            title: {{ appointment.description }} + " - " + {{ appointment.hospital.hospital_name }},
+                            start: {{ appointment.date.isoFormat }}
+                        },
+
+                    {% endfor %}
+
+                ],
+
+                fixedWeekCount: true,
+                eventColor: '#d9691a',
+
+                eventClick: function(event) {
+                    //window.open('appointments/'+event.id+'/');
+                    //window.open("#modal"+event.id);
+                    $("#modalTest").modal('show');
+                    $("#modal"+event.id).modal('show');
+                    return false;
+                }
+
+            });
+
+            {% if isNurse %}
+                $("#calendar").fullCalendar('changeView', 'basicWeek');
+            {% endif %}
+
+        });
+
+    </script>
+
+{% endblock %}

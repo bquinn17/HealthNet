@@ -1,0 +1,239 @@
+"""
+Authors: Nahjee Sowah, Andrew Fountain, Chris Cassidy, Chris Cifolelli, Bryan Quinn
+"""
+from django.contrib import auth
+from django.contrib.admin.models import LogEntry, ADDITION, DELETION
+from django.contrib.auth.decorators import *
+from django.contrib.contenttypes.models import ContentType
+from django.shortcuts import *
+from django.template.context_processors import csrf
+from django.views.generic.edit import UpdateView
+from django.core.urlresolvers import reverse_lazy
+from .forms import *
+from .models import *
+
+
+def home_page(request):
+    """
+    Brings user to website home
+    :param request: user input
+    :return: renders homepage
+    """
+    return render(request, 'health/index.html')
+
+
+def patient_registration(request):
+    """
+    Brings user to registration page and
+    once entered brings user to success or deny page
+    :param request: user input
+    :return: page depending on input
+    """
+    if request.method == "POST":
+        form = PatientRegistrationForm(request.POST)
+        if form.is_valid():
+            patient = form.save(commit=False)
+            if Patient.objects.filter(email=patient.email).exists():
+                return render(request, 'health/invalid_email.html')
+            else:
+                patient.username = patient.email
+                patient.set_password(patient.password)
+                patient.save()
+                return render(request, 'health/registration_success.html')
+        else:
+            return render(request, 'health/invalid_login.html')
+    else:
+        form = PatientRegistrationForm()
+        return render(request, 'health/register.html', {'form': form})
+
+
+def update_object_history(request, obj, position, action, message=None):
+    """ Update object history if turned on """
+    # if not position_settings.UPDATE_OBJECT_HISTORY:
+    #     return
+
+    if not message:
+        if action == ADDITION:
+            action_message = 'added'
+        elif action == DELETION:
+            action_message = 'removed'
+        else:
+            action_message = 'changed'
+        message = 'Position %s was %s. ' % (position, action_message)
+
+    from django.utils.encoding import force_unicode
+    LogEntry.objects.log_action(
+        user_id=request.user.pk,
+        content_type_id=ContentType.objects.get_for_model(obj).pk,
+        object_id=obj.pk,
+        object_repr=force_unicode(obj),
+        action_flag=action,
+        change_message=message
+    )
+
+
+def login(request):
+    """
+    Brings user to login page, but if user is logged in brings them to calender
+    :param request: user request
+    :return: login page or calender
+    """
+    if request.user.is_authenticated():
+        return calendar(request)
+    dictionary = {}
+    dictionary.update(csrf(request))
+    return render_to_response("health/login.html", dictionary)
+
+
+def auth_view(request):
+    """
+    Sees if the the user name and passwords are correct
+    :param request: user request
+    :return: the login page
+    """
+    username = request.POST.get('username', '')  # if no value found in dictionary, return empty string
+    password = request.POST.get('password', '')
+    user = auth.authenticate(username=username, password=password)
+
+    if user is not None:
+        auth.login(request, user)
+        return loggedin(request)  # HttpResponseRedirect('/accounts/loggedin/')
+    else:
+        return invalid_login(request)  # HttpResponseRedirect('/accounts/invalid/')
+
+
+def loggedin(request):
+    """
+    Loges user in
+    :param request: user input
+    :return: logged in page
+    """
+    return render_to_response('health/loggedin.html',
+                              {'full_name': request.user.first_name + " " + request.user.last_name})
+
+
+def invalid_login(request):
+    """
+    Brings user to invalid log in page
+    :param request: user input
+    :return: invalid login page
+    """
+    return render_to_response('health/invalid_login.html')
+
+
+def logout(request):
+    """
+    Brings user to logout page
+    :param request: user input
+    :return: logout page
+    """
+    auth.logout(request)
+    return render_to_response('health/logout.html')
+
+
+# if request.method == "POST":
+#     form = PatientRegistrationForm(request.POST)
+#     if form.is_valid():
+#         patient = form.save(commit=False)
+#         if Patient.objects.filter(email=patient.email).exists():
+#             return render(request, 'health/invalid_email.html')
+#         else:
+#             patient.username = patient.email
+#             patient.set_password(patient.password)
+#             patient.save()
+#             return render(request, 'health/registration_success.html')
+#     else:
+#         return render(request, 'health/invalid_login.html')
+# else:
+#     form = PatientRegistrationForm()
+#     return render(request, 'health/register.html', {'form': form})
+
+def create_appointment(request):
+    """
+    Decides whether an appointment is valid
+    :param request: user input
+    :return: confirmation
+    """
+    if request.method == "POST":
+        form = AppointmentForm(request.POST)
+        if form.is_valid():
+            appointment = form.save(commit=False)
+            appointment.save()
+            return HttpResponse("Congratulations! Created an appointment.")
+        else:
+            return HttpResponse("The appointment is invalid")
+    else:
+        form = AppointmentForm()
+        return render(request, 'health/create_appointment.html', {'form': form})
+
+
+@login_required
+def calendar(request):
+    """
+    Builds calender page for specific user
+    :param request: user input
+    :return: calender
+    """
+    template = loader.get_template('health/calendar.html')
+    appointment_list = []
+    is_nurse = False
+
+    if isinstance(request.user, Nurse):
+        is_nurse = True
+        for a in Appointment.objects.all():
+            if a.hospital == Nurse.working_hospital:
+                appointment_list.append(a)
+    elif isinstance(request.user, Patient) or isinstance(request.user, Doctor):
+        appointment_list = request.user.appointments
+
+    context = {
+        'isLoggedIn': request.user.is_authenticated,
+        'isNurse': is_nurse,
+        'appointment_list': appointment_list,
+    }
+
+    return HttpResponse(template.render(context, request))
+
+
+def error_page(request):
+    """
+    brings up error 404 page if error
+    :param request: user input
+    :return: 404 page
+    """
+    return render_to_response('health/notFound.html')
+
+
+def update_patient_profile(request):  # template_name='health/update_patient_profile.html'):
+    """
+    Brings user to update patient profile page
+    :param request: user input
+    :return: update profile page
+    """
+    patient = get_object_or_404(Patient, id=request.user.id)
+    if request.method == "POST":
+        form = PatientUpdateForm(data=request.POST, instance=patient)
+        if form.is_valid():
+            savePatient = form.save(commit=False)
+            savePatient.save()
+            return render(request, 'health/profile_updated.html')
+        else:
+            return render(request, 'health/invalid_login.html')  # placeholder
+    else:
+        form = PatientUpdateForm(instance=patient)
+        return render(request, 'health/profile_update.html', {'form': form})
+
+"""
+def appointment_detail(request, appointment_id):
+
+    Shows user appointments details
+    :param request: user input
+    :param appointment_id: the id of the appoitment you are looking at
+    :return: appointment details
+
+    template = loader.get_template('health/appointment_detail.html')
+    context = {
+        'appointment': Appointment.objects.filter(id=appointment_id)
+    }
+    return HttpResponse(template.render(context, request))
+"""

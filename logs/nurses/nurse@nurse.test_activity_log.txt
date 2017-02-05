@@ -1,0 +1,5 @@
+2016-12-04 18:15:52		Nurse	username:	nurse@nurse.test                                              		Action: Patient 2(Patient Patient) admitted into hospital 1(Hospital 1) For the following reason: "Testing"
+2016-12-04 18:15:52		Nurse	username:	nurse@nurse.test                                              		Action: Appointment created for 2017-11-11 11:11:00 with Dr. Doctor  at Hospital 1
+2016-12-04 18:15:54		Nurse	username:	nurse@nurse.test                                              		Action: Appointment updated to 2017-11-12 11:11:00 with Dr. Doctor2  at Hospital 1
+2016-12-04 18:15:54		Nurse	username:	nurse@nurse.test                                              		Action: Patient medical information updated
+2016-12-04 18:15:54		Nurse	username:	nurse@nurse.test                                              		Action: Patient medical information updated

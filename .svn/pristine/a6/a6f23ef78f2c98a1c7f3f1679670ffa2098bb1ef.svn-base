@@ -1,0 +1,23 @@
+{% extends 'health/base.html' %}
+{% block content %}
+    <div class = "col-lg-6 col-lg-offset-3">
+        <div id="updateForm">
+
+            <div class="well well-lg">
+
+                <form method="POST" class="post-form form-horizontal">{% csrf_token %}
+
+                    <fieldset>
+                        <legend>Appointment Update</legend>
+                    </fieldset>
+                    {{ form.as_p }}
+{#                        <p>Dates should be enter as: YYYY-MM-DD HH:MM</p>#}
+                    <br/>
+                    <button class="col-lg-3 row btn btn-success" type="submit" name="update">Update</button>
+                    <p><button class="col-lg-9 row btn btn-lg btn-danger" type="submit" name="delete">Delete</button></p>
+                </form>
+            </div>
+        </div>
+        <p><a href="/accounts/calendar/" class="btn btn-lg btn-info btn-block">Return to calendar</a> </p>
+    </div>
+{% endblock %}

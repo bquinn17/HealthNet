@@ -1,0 +1,126 @@
+#registerForm
+{
+
+	margin-top: 5%;
+
+}
+
+.form-group
+{
+
+	padding-bottom: 10%;
+
+}
+
+.my-btn-group
+{
+
+	padding-bottom: 5%;
+
+}
+
+#navUsername
+{
+	color: #5bc0de;
+}
+
+#navBrand
+{
+	max-height: 40px;
+}
+
+.modalField
+{
+	color: #c8c8c8
+}
+
+#footer
+{
+	background-color: #3d4954;
+	font-style: italic;
+	margin-top: 10px;
+	padding: 5px;
+	font-size: 12px;
+}
+
+#registerForm
+{
+
+	margin-top: 5%;
+
+}
+
+.form-group
+{
+
+	padding-bottom: 10%;
+
+}
+
+.my-btn-group
+{
+
+	padding-bottom: 5%;
+
+}
+
+legend
+{
+
+	border-bottom: 1px solid white;
+
+}
+
+.fc-scroller {
+   overflow-y: hidden !important;
+}
+
+.panel-body
+{
+	background-color: #EBEBEB;
+	color: black;
+}
+
+.navbar-brand
+{
+	padding: 0;
+}
+
+#dlHeader
+{
+	border-bottom: 3px solid white;
+	margin-bottom: 3%;
+}
+#dlHeader img
+{
+	margin-left: 2%;
+	width: 15%;
+}
+
+.dlPanel
+{
+	margin-left: 10%;
+	margin-bottom: 5%;
+	opacity: 0.5;
+}
+
+#inbox
+{
+    overflow-y: auto;
+    height: 500px;
+}
+
+.inboxEntry
+{
+    cursor: pointer;
+}
+
+.messageRender
+{
+    display: none;
+}
+
+#banner
+{
+	max-height: 75px;
+}

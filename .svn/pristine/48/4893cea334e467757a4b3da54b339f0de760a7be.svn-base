@@ -1,0 +1,28 @@
+from django.shortcuts import render
+from .forms import PatientRegistrationForm
+from .old_code import Patient
+from django.http import HttpResponse
+
+# Create your views here.
+
+
+def patient_registration(request):
+    if request.method == "POST":
+        form = PatientRegistrationForm(request.POST)
+        if form.is_valid():
+            patient = form.save(commit=False)
+            if Patient.objects.filter(email=patient.email).exists():
+                return HttpResponse("That email was already used")
+            else:
+                patient.username = patient.email
+                patient.save()
+                return HttpResponse("Congratulations! You registered a new user.")
+        else:
+            return HttpResponse("That user is not valid")
+    else:
+        form = PatientRegistrationForm()
+        return render(request, 'health/register.html', {'form': form})
+
+
+# def splash_screen(request):
+#     form =

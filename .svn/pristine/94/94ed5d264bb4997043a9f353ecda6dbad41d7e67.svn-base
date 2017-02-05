@@ -1,0 +1,9 @@
+from django.shortcuts import render
+from .forms import PatientRegistrationForm
+
+# Create your views here.
+
+
+def patient_registration(request):
+    form = PatientRegistrationForm()
+    return render(request, 'register.html', {'form': form})

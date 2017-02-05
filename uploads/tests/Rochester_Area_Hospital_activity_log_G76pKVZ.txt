@@ -1,0 +1,43 @@
+2016-10-23 22:27:24		Patient username:	patient@gmail.com                                 		Action: Patient Registered
+2016-10-24 12:37:33		Patient username:	patient@gmail.com                                 		Action: Appointment created for 2016-10-24 12:34:03 with Dr. Doctor  at Rochester Area Hospital
+2016-10-26 20:34:14		Patient	username:	patient@gmail.com                                           		Action: Appointment created for 2016-04-10 06:30:00 with Dr. Doctor  at Rochester Area Hospital
+2016-10-29 00:48:25		Patient	username:	patient@gmail.com                                           		Action: Appointment created for 2016-10-12 10:25:00 with Dr. Doctor  at Rochester Area Hospital
+2016-10-29 00:49:34		Patient	username:	patient@gmail.com                                           		Action: Appointment created for 2016-10-21 14:30:00 with Dr. Doctor  at Rochester Area Hospital
+2016-10-29 22:39:26		Patient	username:	patient@gmail.com                                           		Action: Appointment deleted for 2016-10-26 20:22:22 with Dr. Doctor  at Rochester Area Hospital
+2016-10-29 22:47:20		Patient	username:	patient@gmail.com                                           		Action: Appointment deleted for 2016-10-26 20:22:22 with Dr. Doctor  at Rochester Area Hospital
+2016-10-30 17:58:18		Patient	username:	patient@gmail.com                                           		Action: Appointment created for 2016-10-31 05:30:00 with Dr. Doctor  at Rochester Area Hospital
+2016-10-30 17:59:06		Patient	username:	patient@gmail.com                                           		Action: Appointment deleted for 2016-10-31 09:30:00 with Dr. Doctor  at Rochester Area Hospital
+2016-10-30 18:01:16		Patient	username:	patient@gmail.com                                           		Action: Appointment created for 2016-10-31 14:30:00 with Dr. Doctor  at Rochester Area Hospital
+2016-10-30 18:02:27		Patient	username:	patient@gmail.com                                           		Action: Appointment deleted for 2016-10-31 18:30:00 with Dr. Doctor  at Rochester Area Hospital
+2016-10-30 18:56:13		Patient	username:	patient@gmail.com                                           		Action: Appointment created for 2016-10-31 10:05:00 with Dr. Doctor  at Rochester Area Hospital
+2016-10-31 00:47:00		Patient	username:	patient@gmail.com                                           		Action: Appointment created for 2016-10-31 13:45:00 with Dr. Doctor  at Rochester Area Hospital
+2016-10-31 00:49:36		Patient	username:	patient@gmail.com                                           		Action: Appointment deleted for 2016-10-31 14:05:00 with Dr. Doctor  at Rochester Area Hospital
+2016-10-31 01:09:39		Patient	username:	patient@gmail.com                                           		Action: Appointment created for 2016-10-31 01:09:27 with Dr. Doctor  at Rochester Area Hospital
+2016-10-31 01:09:47		Patient	username:	patient@gmail.com                                           		Action: Appointment deleted for 2016-10-31 05:09:27 with Dr. Doctor  at Rochester Area Hospital
+2016-11-05 20:10:19		Patient	username:	patient@gmail.com                                           		Action: Appointment created for 2016-11-05 19:38:00 with Dr. Doctor  at Rochester Area Hospital
+2016-11-05 20:12:46		Patient	username:	patient@gmail.com                                           		Action: Appointment deleted for 2016-11-05 19:38:00 with Dr. Doctor  at Rochester Area Hospital
+2016-11-05 20:13:28		Patient	username:	patient@gmail.com                                           		Action: Appointment deleted for 2016-10-31 13:45:00 with Dr. Doctor  at Rochester Area Hospital
+2016-11-05 20:14:15		Patient	username:	patient@gmail.com                                           		Action: Appointment created for 2016-11-05 19:38:00 with Dr. Doctor  at Rochester Area Hospital
+2016-11-05 23:08:49		Patient	username:	patient@gmail.com                                           		Action: Patient attempted to access medical information file: tests/design.html
+2016-11-20 23:03:22		Doctor	username:	doctor2@gmail.com                                            		Action: Patient 3(Mr Patient) admitted into hospital 1(Rochester Area Hospital) For the following reason: "sick"
+2016-11-20 23:15:02		Doctor	username:	doctor2@gmail.com                                            		Action: Patient 3(Mr Patient) admitted into hospital 1(Rochester Area Hospital) For the following reason: "sick"
+2016-11-20 23:25:07		Doctor	username:	doctor2@gmail.com                                            		Action: Patient 3(Mr Patient) admitted into hospital 1(Rochester Area Hospital) For the following reason: "still sick"
+2016-11-20 23:26:21		Doctor	username:	doctor2@gmail.com                                            		Action: Patient 3(Mr Patient) admitted into hospital 1(Rochester Area Hospital) For the following reason: "asdfgd"
+2016-11-20 23:35:19		Doctor	username:	doctor2@gmail.com                                            		Action: Patient 3(Mr Patient) admitted into hospital 1(Rochester Area Hospital) For the following reason: "dsfkljsdkflj"
+2016-11-20 23:39:10		Doctor	username:	doctor2@gmail.com                                            		Action: Patient 3(Mr Patient) admitted into hospital 1(Rochester Area Hospital) For the following reason: "no reason!"
+2016-11-20 23:40:02		Doctor	username:	doctor2@gmail.com                                            		Action: Patient 3(Mr Patient) admitted into hospital 2(Two Words Hospital) For the following reason: "idk"
+2016-11-22 03:20:56		Doctor	username:	doctor2@gmail.com                                            		Action: Appointment created for 2016-11-22 02:52:00 with Dr. Doctor  at Rochester Area Hospital
+2016-11-22 03:34:12		Patient	username:	patient@gmail.com                                           		Action: Appointment created for 2016-11-23 03:30:00 with Dr. Doctor  at Rochester Area Hospital
+2016-11-22 03:35:47		Doctor	username:	doctor2@gmail.com                                            		Action: Appointment created for 2016-11-24 03:30:00 with Dr. Doctor  at Rochester Area Hospital
+2016-11-23 00:46:51		Doctor	username:	doctor2@gmail.com                                            		Action: Test created for patient@gmail.com by Dr. Doctor called Calc
+2016-11-23 00:48:01		Doctor	username:	doctor2@gmail.com                                            		Action: Test created for patient@gmail.com by Dr. Doctor called Calc
+2016-11-23 02:25:25		Doctor	username:	doctor2@gmail.com                                            		Action: Test created for patient@gmail.com by Dr. Doctor called Drug test
+2016-11-23 02:43:12		Doctor	username:	doctor2@gmail.com                                            		Action: Test created for patient@gmail.com by Dr. Doctor called Test for pulse
+2016-11-23 02:45:37		Doctor	username:	doctor2@gmail.com                                            		Action: Test created for patient@gmail.com by Dr. Doctor called Calc
+2016-11-23 02:48:15		Doctor	username:	doctor2@gmail.com                                            		Action: Test created for patient@gmail.com by Dr. Doctor called Rabies
+2016-11-23 02:51:34		Doctor	username:	doctor2@gmail.com                                            		Action: Test created for patient@gmail.com by Dr. Doctor called Another test
+2016-11-23 02:52:17		Doctor	username:	doctor2@gmail.com                                            		Action: Test created for patient@gmail.com by Dr. Doctor called Test test
+2016-11-23 02:52:58		Doctor	username:	doctor2@gmail.com                                            		Action: Test created for patient@gmail.com by Dr. Doctor called Test for pulse
+2016-11-23 02:53:15		Doctor	username:	doctor2@gmail.com                                            		Action: Test created for patient@gmail.com by Dr. Doctor called Created
+2016-11-25 22:21:16		Doctor	username:	doctor2@gmail.com                                            		Action: Patient 3(Mr Patient) admitted into hospital 2(Two Words Hospital) For the following reason: "Needs surgery."
+2016-11-25 22:31:29		Doctor	username:	doctor2@gmail.com                                            		Action: Patient 3(Mr Patient) admitted into hospital 2(Two Words Hospital) For the following reason: "Who knows"

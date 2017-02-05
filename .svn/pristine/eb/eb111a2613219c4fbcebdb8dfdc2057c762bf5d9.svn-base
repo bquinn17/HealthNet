@@ -1,0 +1,7 @@
+from django.contrib import admin
+
+from health.models import Appointment
+from health.models import Patient
+from health.models import Doctor
+
+admin.site.register(Patient, Appointment, Doctor)

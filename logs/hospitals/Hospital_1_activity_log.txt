@@ -1,0 +1,12 @@
+2016-12-04 18:15:53		Patient	username:	patient@patient.test                                        		Action: Message sent to patient@patient.test
+2016-12-04 18:15:53		Patient	username:	patient@patient.test                                        		Action: Message sent to patient@patient.test
+2016-12-04 18:15:53		Doctor	username:	doctor@doctor.test                                           		Action: Test created for patient@patient.test by Dr. Doctor called TESTING...
+2016-12-04 18:15:53		Doctor	username:	doctor@doctor.test                                           		Action: Test created for patient2@patient.test by Dr. Doctor called TESTING..
+2016-12-04 18:15:53		Doctor	username:	doctor@doctor.test                                           		Action: Test created for patient@patient.test by Dr. Doctor called TESTING...
+2016-12-04 18:15:54		Nurse	username:	nurse@nurse.test                                              		Action: Appointment updated to 2017-11-12 11:11:00 with Dr. Doctor2  at Hospital 1
+2016-12-04 18:15:54		Patient	username:	patient@patient.test                                        		Action: Appointment updated to 2017-11-12 11:11:00 with Dr. Doctor2  at Hospital 1
+2016-12-04 18:15:54		Doctor	username:	doctor@doctor.test                                           		Action: Patient medical information updated
+2016-12-04 18:15:54		Nurse	username:	nurse@nurse.test                                              		Action: Patient medical information updated
+2016-12-04 18:15:54		Doctor	username:	doctor@doctor.test                                           		Action: Patient medical information updated
+2016-12-04 18:15:54		Doctor	username:	doctor@doctor.test                                           		Action: Patient medical information updated
+2016-12-04 18:15:54		Nurse	username:	nurse@nurse.test                                              		Action: Patient medical information updated

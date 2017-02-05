@@ -1,0 +1,121 @@
+"""
+Authors: Nahjee Sowah, Andrew Fountain, Chris Cassidy, Chris Cifolelli, Bryan Quinn
+"""
+
+from django.contrib.auth.models import User
+from django.contrib.auth.models import User
+from django.db import models
+from django.utils import timezone
+
+
+class Hospital(models.Model):
+    """
+    Class_Name: Hospital
+    -Stores information for Hospital object
+    Attributes: hospital name
+    SubClasses: Meta
+        responsible for creating hospitals
+    """
+    hospital_name = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.hospital_name
+
+
+class Prescription(models.Model):
+    prescription_name = models.CharField(max_length=100, default="None")
+
+    def __str__(self):
+        return "Prescription: " + self.prescription_name
+
+    class Meta:
+        verbose_name_plural = "Prescriptions"
+        verbose_name = "Prescription"
+
+
+class Patient(User, models.Model):
+    """
+    Class_Name: Patient
+    -Stores information for patient object
+    Attributes:address,phone_number, insurance_id, insurance_provider, emergency_contact_name, emergency_contact_phone_number
+    SubClasses: Meta
+        responsible for labeling on admin page
+
+    """
+    user = models.OneToOneField(User)
+    address = models.CharField(max_length=100, default='None')
+    phone_number = models.CharField(max_length=10, default='None')
+    insurance_id = models.CharField(max_length=10, default='None')
+    insurance_provider = models.CharField(max_length=30, default='None')
+    main_hospital = models.ForeignKey(Hospital, null=True, blank=True)  # each patient has one main hospital
+    emergency_contact_name = models.CharField(max_length=50, default='None')
+    emergency_contact_phone_number = models.CharField(max_length=10, default='None')
+    prescriptions = models.ManyToManyField(Prescription)
+    medical_information = models.FileField(upload_to='patient_uploads/')
+    current_hospital_id = models.IntegerField(default=0)
+    is_checked_in = models.BooleanField(default=False)
+
+    def __str__(self):
+        return "Patient: " + self.first_name + " " + self.last_name
+
+    class Meta:  # sets class name in admin site
+        verbose_name = 'Patient'
+        verbose_name_plural = 'Patients'
+
+
+class Nurse(User, models.Model):
+    """
+    Class_Name: Nurse
+    -Stores information for nurse object
+    Attributes:address,phone_number
+    SubClasses: Meta
+        responsible for labeling on admin page
+    """
+    user = models.OneToOneField(User)
+    working_hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return "Nurse: " + self.first_name + " " + self.last_name
+
+    class Meta:  # sets class name in admin site
+        verbose_name = 'Nurse'
+        verbose_name_plural = 'Nurses'
+
+
+class Doctor(User, models.Model):
+    """
+    Class_Name: Doctor
+    -Stores information for Doctor object
+    Attributes: address, phone_number
+    SubClasses: Meta
+        responsible for labeling on admin page
+    """
+    user = models.OneToOneField(User)
+    hospitals = models.ManyToManyField(Hospital, default=None)
+
+    def __str__(self):
+        return "Doctor: " + self.first_name + " " + self.last_name
+
+    class Meta:  # sets class name in admin site
+        verbose_name = 'Doctor'
+        verbose_name_plural = 'Doctors'
+
+
+class Appointment(models.Model):
+    """
+    Class_Name: Appointment
+    -Stores information for Hospital object
+    Attributes: Appointment Date
+    SubClasses: Meta
+        responsible for creating appointment
+    """
+
+    def __str__(self):
+        return self.description
+
+    start_date = models.DateTimeField('Start Time', default=timezone.now)
+    end_date = models.DateTimeField('End Time', default=(timezone.now() + timezone.timedelta(hours=1)))
+    description = models.CharField(max_length=200)
+    patient = models.ForeignKey(Patient, default=None)
+    doctor = models.ForeignKey(Doctor, default=None)
+    hospital = models.ForeignKey(Hospital, default=None)

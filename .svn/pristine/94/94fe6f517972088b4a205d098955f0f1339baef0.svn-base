@@ -1,0 +1,95 @@
+{% extends 'health/base.html' %}
+{% block content %}
+    <div class = "col-lg-8 col-lg-offset-2">
+
+        <!-- MODAL START -->
+        <div class = "modal" id = "removeWarning{{ prescription.id }}">
+            <div class = "modal-dialog">
+                <div class = "modal-content">
+                    <div class = "modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    </div>
+                    <div class = "modal-body">
+                        <div class = "row">
+                            <h4>Are you sure you want to remove this prescription: {{ prescription.prescription_name }}?</h4>
+                        </div>
+                        <div class = "row">
+                            <div class = "col col-lg-2 co-lg-offset-10">
+                                <a href = "/accounts/remove_prescription/{{ patient.id }}/{{ prescription.id }}" class = "btn btn- btn-primary">Yes</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class = "modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- MODAL END -->
+
+        {% if display_message %}
+        <div class = "row">
+            <div class = "alert alert-dismissable alert-success">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4>Success!</h4>
+                <p>{{ message }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if display_alert %}
+            <div class = "alert alert-dismissable alert-warning">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <h4>Oops!</h4>
+                <p>{{ message }}</p>
+            </div>
+        {% endif %}
+
+        <h2>
+            List of Prescriptions by Patient
+        </h2>
+
+        <div class = "well well-lg">
+
+            {% for patient in patients %}
+                {% if is_doc_or_admin %}
+                    <div class="panel panel-info">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">{{ patient.user.first_name }} {{ patient.user.last_name }} - <span style = "color: #DF691A">#{{ patient.user.id }}</span></h3>
+                        </div>
+                        <div class="panel-body">
+                            {% for prescription in patient.prescriptions.all %}
+                                <div class = "row">
+                                    <div class = "col col-lg-3 co-lg-offset-1">
+                                        {{ prescription.prescription_name }}
+                                    </div>
+
+                                    <div class = "col col-lg-3 co-lg-offset-12">
+                                        <button id = "{{ prescription.id }}"
+                                           class = "btn btn-danger btn-sm btn-block removeButton">Remove</button>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    <script>
+
+        $(document).ready(function(){
+            $(".removeButton").click(function(){
+                var buttId = this.id;
+                $("#removeWarning" + buttId).modal('show');
+
+            });
+        });
+
+    </script>
+
+{% endblock %}

@@ -1,0 +1,37 @@
+from django.core.files.storage import FileSystemStorage
+from django.db import models
+
+# Create your old_code here.
+from django import forms
+from django.contrib.auth.models import User
+from HealthNet import settings
+from django.utils import timezone
+
+
+class Patient(User, models.Model):
+    user = models.OneToOneField(User)
+    medical_information = models.FileField(storage=FileSystemStorage(location=settings.MEDIA_ROOT), upload_to='logos',
+                                           default='settings.MEDIA_ROOT/logos/anonymous.jpg')
+
+class Hospital(models.Model):
+    hospital_name = models.CharField(max_length=50)
+
+class Nurse(User, models.Model):
+    user = models.OneToOneField(User)
+    working_hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE)
+
+
+class Doctor(User, models.Model):
+    user = models.OneToOneField(User)
+    hospitals = models.ManyToManyField(Hospital)
+
+class Appointment(models.Model):
+    date = models.DateTimeField('Scheduled Date')
+    description = models.CharField(max_length=200)
+    # This might not work but then again this is python
+    patient = models.ForeignKey(Patient)
+    doctor = models.ForeignKey(Doctor)
+    hospital = models.ForeignKey(Hospital)
+
+
+

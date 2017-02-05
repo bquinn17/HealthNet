@@ -1,0 +1,12 @@
+2016-11-30 18:17:50		Admin	username:	admin                                                         		Action: Admin Created
+2016-11-30 18:19:39		Admin	username:	admin                                                         		Action: Hospital Created: the lucas center
+2016-11-30 18:20:21		Admin	username:	admin                                                         		Action: Doctor Registered: newuser@gmail.com
+2016-11-30 18:21:37		Admin	username:	admin                                                         		Action: Doctor Registered: assset@g.com
+2016-11-30 18:23:06		Admin	username:	admin                                                         		Action: Nurse Registered: nurt@g.com
+2016-11-30 18:23:37		Admin	username:	admin                                                         		Action: Prescription created
+2016-11-30 18:36:18		Admin	username:	admin                                                         		Action: Doctor Registered: email@g.com
+2016-11-30 18:55:13		Admin	username:	admin                                                         		Action: Nurse Registered: nurse@gmail.com
+2016-12-01 21:16:50		Admin	username:	admin                                                         		Action: Doctor Registered: doctor@gmail.com
+2016-12-03 13:42:10		Admin	username:	admin                                                         		Action: Nurse Registered: nurse2@gmail.com
+2016-12-03 13:45:10		Admin	username:	admin                                                         		Action: Nurse Registered: nurse2@gmail.com
+2016-12-03 16:20:06		Admin	username:	admin                                                         		Action: Message sent to doctor@gmail.com

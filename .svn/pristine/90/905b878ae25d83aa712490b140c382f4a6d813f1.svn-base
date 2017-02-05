@@ -1,0 +1,20 @@
+{% extends 'health/base.html' %}
+{% block content %}
+
+    <div class = "col-lg-6 col-lg-offset">
+
+    <form enctype="multipart/form-data" method="POST" class="post-form form-horizontal">{% csrf_token %}
+
+        <fieldset>
+            <legend>Update Medical Information</legend>
+        </fieldset>
+
+            {{ form.as_p }}
+
+        <button class = "btn btn-info" type = "submit">Update</button>
+
+    </form>
+
+    </div>
+
+{% endblock %}

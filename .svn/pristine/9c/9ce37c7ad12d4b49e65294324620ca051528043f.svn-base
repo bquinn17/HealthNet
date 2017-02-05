@@ -1,0 +1,9 @@
+{% extends "health/base.html" %}
+
+{% block content %}
+    <div class ="col-lg-6 col-lg-offset-3">
+        <h2>The appointment date you entered is invalid due to these errors:</h2>
+        <p>{{ form.errors }}</p>
+        <p><a href="/" class="btn btn-lg btn-success btn-block">Return to Home</a> </p>
+    </div>
+{% endblock %}

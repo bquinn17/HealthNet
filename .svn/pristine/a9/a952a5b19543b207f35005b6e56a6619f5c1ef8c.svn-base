@@ -1,0 +1,757 @@
+"""
+Authors: Bryan Quinn, Andrew Fountain, Chris Cassidy, Chris Cifolelli, Nahjee Sowah
+"""
+
+from django import forms
+
+from widget.widgets import DateTimeWidget
+from .models import *
+
+
+class PatientRegistrationForm(forms.ModelForm):
+    """
+    class_object: PatientRegistrationForm(forms.ModelForm)
+    Sub_Class:Meta
+    Methods: clean_phone_number, clean_password
+    """
+
+    class Meta:
+        model = Patient
+        fields = (
+            'email', 'first_name', 'last_name', 'password', 'medical_information', 'phone_number', 'insurance_provider',
+            'insurance_id', 'address', 'emergency_contact_phone_number', 'emergency_contact_name', "main_hospital")
+
+    email = forms.CharField(max_length=50, required=True,
+                            widget=forms.TextInput(attrs={'class': 'form-control',
+                                                          'placeholder': "(i.e. user@mail.com)"}))
+    first_name = forms.CharField(max_length=50, required=True,
+                                 widget=forms.TextInput(attrs={'class': 'form-control',
+                                                               'placeholder': "(First Name)"}))
+    last_name = forms.CharField(max_length=50, required=True,
+                                widget=forms.TextInput(attrs={'class': 'form-control',
+                                                              'placeholder': "(Last Name)"}))
+    address = forms.CharField(max_length=100, required=False,
+                              widget=forms.TextInput(attrs={'class': 'form-control',
+                                                            'placeholder': "(Street, City, State, Zip Code)"}))
+    phone_number = forms.CharField(max_length=10, required=False,
+                                   widget=forms.TextInput(attrs={'class': 'form-control',
+                                                                 'placeholder': "(i.e. 1234567890)"}))
+    insurance_id = forms.CharField(max_length=20, required=True,
+                                   widget=forms.TextInput(attrs={'class': 'form-control',
+                                                                 'placeholder': "(i.e. ABC123456789)"}))
+    insurance_provider = forms.CharField(max_length=30, required=True,
+                                         widget=forms.TextInput(attrs={'class': 'form-control',
+                                                                       'placeholder': "(i.e. Blue Cross Blue Shield)"}))
+
+    main_hospital = forms.ModelChoiceField(queryset=Hospital.objects.all(), required=True, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control', 'required': ''}), empty_label="<Hospital>")
+
+    emergency_contact_name = forms.CharField(max_length=50, required=False,
+                                             widget=forms.TextInput(attrs={'class': 'form-control',
+                                                                           'placeholder': "(First_Name Last_Name)"}))
+    emergency_contact_phone_number = forms.CharField(max_length=10, required=False,
+                                                     widget=forms.TextInput(attrs={'class': 'form-control',
+                                                                                   'placeholder': "(i.e. 1234567890)"}))
+    password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control',
+                                                                 'placeholder': "(Password)"}))
+    medical_information = forms.FileField(required=False, widget=forms.FileInput(attrs={'class': 'form-control'}))
+
+    def clean_phone_number(self):
+        """
+        function:clean_phone_number
+        -gives limitations for phone number field
+        params: the registration form object
+        -feeds data in to validate/clean
+        variables:
+        -post-conditions
+        -data has been validated
+        """
+        data = self.cleaned_data['phone_number']
+        if len(data) >= 16:
+            raise forms.ValidationError("Please enter a phone number of length less than 16")
+        if any((not character.isdigit()) for character in data):
+            raise forms.ValidationError("Only numbers please....")
+        # Always return the cleaned data, whether you have changed it or not.
+        return data
+
+    def clean_first_name(self):  # doesn't allow letters in fist name
+        data = self.cleaned_data['first_name']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def clean_last_name(self):  # doesn't allow numbers in last name
+        data = self.cleaned_data['last_name']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def clean_address(self):
+        data = self.cleaned_data['address']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def clean_emergency_contact_name(self):  # doesn't allow numbers in emergency contact name
+        data = self.cleaned_data['emergency_contact_name']
+        # only if they actually entered this in
+        if data != '' and any(character.isdigit() or character == '<' or character == '>' or character == ';' for
+                              character in data):
+            raise forms.ValidationError("Only letters or spaces, please")
+        return data
+
+    def clean_emergency_contact_phone_number(self):  # doesn't allow letters in emergency contact phone number
+        data = self.cleaned_data['emergency_contact_phone_number']
+        if data != '':  # only if they entered this in the form
+            if any((not character.isdigit()) for character in data):
+                raise forms.ValidationError("Only numbers please")
+        return data
+
+    def clean_password(self):
+        """
+        function:clean_password
+        -gives limitations for password
+        params: the registration form object
+        -feeds data in to validate/clean
+        variables:
+        -post-conditions
+        -data has been validated
+        """
+        data = self.cleaned_data['password']
+        if len(data) < 7:
+            raise forms.ValidationError("Your password is too short")
+        # Always return the cleaned data, whether you have changed it or not.
+        return data
+
+
+class PatientUpdateForm(forms.ModelForm):
+    """
+    class_object: PatientUpdateForm(forms.ModelForm)
+    Sub_Class:Meta
+    """
+
+    class Meta:
+        model = Patient
+        fields = ('first_name', 'last_name', 'phone_number', 'emergency_contact_name',
+                  'emergency_contact_phone_number', 'address')  # , "main_hospital")
+
+    first_name = forms.CharField(max_length=25, required=True,
+                                 widget=forms.TextInput(attrs={'class': 'form-control'}))
+    last_name = forms.CharField(max_length=25, required=True,
+                                widget=forms.TextInput(attrs={'class': 'form-control'}))
+    address = forms.CharField(max_length=100, required=False,
+                              widget=forms.TextInput(attrs={'class': 'form-control'}))
+    phone_number = forms.CharField(max_length=10, required=False,
+                                   widget=forms.TextInput(attrs={'class': 'form-control'}))
+    emergency_contact_name = forms.CharField(max_length=50, required=False,
+                                             widget=forms.TextInput(attrs={'class': 'form-control'}))
+    emergency_contact_phone_number = forms.CharField(max_length=10, required=False,
+                                                     widget=forms.TextInput(attrs={'class': 'form-control'}))
+
+    def clean_phone_number(self):
+        """
+        function:clean_phone_number
+        -gives limitations for phone number field
+        params: the registration form object
+        -feeds data in to validate/clean
+        variables:
+        -post-conditions
+        -data has been validated
+        """
+        data = self.cleaned_data['phone_number']
+        if len(data) >= 16:
+            raise forms.ValidationError("Please enter a phone number of length less than 16")
+        if any((not character.isdigit()) for character in data):
+            raise forms.ValidationError("Only numbers please....")
+        # Always return the cleaned data, whether you have changed it or not.
+        return data
+
+    def clean_first_name(self):  # doesn't allow letters in fist name
+        data = self.cleaned_data['first_name']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def clean_last_name(self):  # doesn't allow numbers in last name
+        data = self.cleaned_data['last_name']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def clean_address(self):
+        data = self.cleaned_data['address']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def clean_emergency_contact_name(self):  # doesn't allow numbers in emergency contact name
+        data = self.cleaned_data['emergency_contact_name']
+        # only if they actually entered this in
+        if data != '' and any(character.isdigit() or character == '<' or character == '>' or character == ';' for
+                              character in data):
+            raise forms.ValidationError("Only letters or spaces, please")
+        return data
+
+    def clean_emergency_contact_phone_number(self):  # doesn't allow letters in emergency contact phone number
+        data = self.cleaned_data['emergency_contact_phone_number']
+        if data != '':  # only if they entered this in the form
+            if any((not character.isdigit()) for character in data):
+                raise forms.ValidationError("Only numbers please")
+        return data
+
+
+class AppointmentForm(forms.ModelForm):
+    """
+    class_object: PatientRegistrationForm(forms.ModelForm)
+    Sub_Class:Meta
+    Methods: clean_phone_number, clean_password
+    """
+
+    class Meta:
+        model = Appointment
+        fields = ('start_date', 'end_date', 'description')
+
+        #  hospital = forms.ModelChoiceField(queryset=Hospital.objects.all(), required=True, widget=forms.Select(
+        #      attrs={'class': 'selectpicker show-tick form-control', 'required': ''}),
+        #                                    empty_label="<Hospital>")
+
+    start_date = forms.DateTimeField(initial=str(timezone.now())[:19])
+    end_date = forms.DateTimeField(initial=str(timezone.now() + timezone.timedelta(hours=1))[:19])
+    description = forms.CharField(max_length=100, required=True,
+                                  widget=forms.TextInput(attrs={'class': 'form-control',
+                                                                'placeholder': "<Description>"}))
+
+    def __str__(self):
+        return str(self.description) + " - " + str(self.hospital)
+
+    def clean_description(self):  # doesn't allow numbers in description
+        data = self.cleaned_data['description']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def clean(self):
+        # cleaned_data = super(AppointmentForm, self).clean()
+        start_date = self.cleaned_data['start_date']
+        end_date = self.cleaned_data['end_date']
+        if 'patient' in self.cleaned_data:
+            patient = self.cleaned_data['patient']
+        else:
+            patient = self.patient
+            # patient = Patient.objects.filter(id=self.patient)
+
+        if 'doctor' in self.cleaned_data:
+            doctor = self.cleaned_data['doctor']
+        else:
+            doctor = Doctor.objects.get(id=self.doctor)
+
+        if 'hospital' in self.cleaned_data:
+            hospital = self.cleaned_data['hospital']
+        else:
+            hospital = self.nurse.working_hospital
+
+        if start_date > end_date:
+            raise forms.ValidationError("The appointment ends before it starts.")
+
+        if start_date < timezone.now():
+            raise forms.ValidationError("The appointment starts in the past.")
+
+        has_hospital = False
+        for h in doctor.hospitals.all():
+            if h == hospital:
+                has_hospital = True
+                break
+
+        if not has_hospital:
+            raise forms.ValidationError("That Doctor is not available at that hospital.")
+
+        for appointment in Appointment.objects.filter(patient=patient):
+            if start_date <= appointment.start_date <= end_date or \
+                                    start_date <= appointment.end_date <= end_date:
+                raise forms.ValidationError("That Patient is not available at that time.")
+
+        for appointment in Appointment.objects.filter(doctor=doctor):
+            if start_date <= appointment.start_date <= end_date or \
+                                    start_date <= appointment.end_date <= end_date:
+                raise forms.ValidationError("That Doctor is not available at that time.")
+
+
+class PatientAppointment(AppointmentForm, forms.ModelForm):
+    """
+    class_object: PatientAppoitment(forms.ModelForm)
+    Sub_Class:Meta
+    Methods: clean_description
+    """
+
+    class Meta:
+        model = Appointment
+        fields = ('doctor', 'hospital', 'start_date', 'end_date', 'description')
+
+    start_date = forms.DateTimeField(widget=DateTimeWidget(), initial=str(timezone.now())[:16])
+    end_date = forms.DateTimeField(widget=DateTimeWidget(),
+                                   initial=str(timezone.now() + timezone.timedelta(hours=1))[:16])
+    doctor = forms.ModelChoiceField(queryset=Doctor.objects.all(), required=False, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control', 'required': ''}),
+                                    empty_label="<Doctor>")
+    hospital = forms.ModelChoiceField(queryset=Hospital.objects.all(), required=True, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control', 'required': ''}),
+                                      empty_label="<Hospital>")
+    description = forms.CharField(max_length=100, required=True,
+                                  widget=forms.TextInput(
+                                      attrs={'class': 'form-control', 'placeholder': "<Description>"}))
+
+    def __init__(self, patient=None, *args, **kwargs):
+        super(AppointmentForm, self).__init__(*args, **kwargs)
+        if patient:
+            self.patient = patient
+        self.fields.keyOrder = ['doctor', 'hospital', 'start_date', 'end_date', 'description']
+
+    def clean_description(self):  # doesn't allow numbers in last name
+        data = self.cleaned_data['description']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+
+class DoctorAppointment(AppointmentForm, forms.ModelForm):
+    """
+    class_object: DoctorAppointment
+    Sub_Class:Meta
+    Methods: clean_description
+    """
+
+    class Meta:
+        model = Appointment
+        fields = ('patient', 'hospital', 'start_date', 'end_date', 'description')
+
+    start_date = forms.DateTimeField(widget=DateTimeWidget(), initial=str(timezone.now())[:16])
+    end_date = forms.DateTimeField(widget=DateTimeWidget(),
+                                   initial=str(timezone.now() + timezone.timedelta(hours=1))[:16])
+    hospital = forms.ModelChoiceField(queryset=Hospital.objects.all(), required=False, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control', 'required': ''}), empty_label="<Hospital>")
+    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control', 'required': ''}),
+                                     empty_label="<Patient>")
+    description = forms.CharField(max_length=100, required=True,
+                                  widget=forms.TextInput(attrs={'class': 'form-control',
+                                                                'placeholder': '<Description>'}))
+
+    def __init__(self, doctor=None, *args, **kwargs):
+        super(AppointmentForm, self).__init__(*args, **kwargs)
+        if doctor:
+            self.doctor = doctor
+        self.fields.keyOrder = ['patient', 'hospital', 'start_date', 'end_date', 'description']
+
+    def clean_description(self):  # doesn't allow numbers in last name
+        data = self.cleaned_data['description']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+
+class NurseAppointment(AppointmentForm, forms.ModelForm):
+    """
+    class_object: NurseAppointment(AppointmentForm)
+    Sub_Class:Meta
+    Methods: clean_description
+    """
+
+    class Meta:
+        model = Appointment
+        fields = ('patient', 'doctor', 'start_date', 'end_date', 'description')
+
+    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control', 'required': ''}),
+                                     empty_label="<Patient>")
+    doctor = forms.ModelChoiceField(queryset=Doctor.objects.all(), required=False, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control', 'required': ''}),
+                                    empty_label="<Doctor>")
+    start_date = forms.DateTimeField(widget=DateTimeWidget(), initial=str(timezone.now())[:16])
+    end_date = forms.DateTimeField(widget=DateTimeWidget(),
+                                   initial=str(timezone.now() + timezone.timedelta(hours=1))[:16])
+    description = forms.CharField(max_length=100, required=True,
+                                  widget=forms.TextInput(attrs={'class': 'form-control',
+                                                                'placeholder': '<Description>'}))
+
+    def __init__(self, nurse=None, *args, **kwargs):
+        super(AppointmentForm, self).__init__(*args, **kwargs)
+        if nurse:
+            self.nurse = nurse
+        self.fields.keyOrder = ['patient', 'doctor', 'start_date', 'end_date', 'description']
+
+    def clean_description(self):  # doesn't allow numbers in last name
+        data = self.cleaned_data['description']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+
+class ViewStatisticsForm(forms.Form):
+    """
+    class_object: NurseAppointment(AppointmentForm)
+    """
+    hospital = forms.ModelChoiceField(queryset=Hospital.objects.all(), required=False, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control'}), empty_label="<Hospital>")
+    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control'}), empty_label="<Patient>")
+    prescription = forms.ModelChoiceField(queryset=Prescription.objects.all(), required=False, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control'}), empty_label="<Prescription>")
+
+
+class LogSearchForm(forms.Form):
+    # will work on this stuff later
+    #    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=False, widget=forms.Select(
+    #        attrs={'class': 'selectpicker show-tick form-control'}), empty_label="<Patient>")
+    #    doctor = forms.ModelChoiceField(queryset=Doctor.objects.all(), required=False, widget=forms.Select(
+    #        attrs={'class': 'selectpicker show-tick form-control'}), empty_label="<Doctor>")
+    #    nurse = forms.ModelChoiceField(queryset=Nurse.objects.all(), required=False, widget=forms.Select(
+    #        attrs={'class': 'selectpicker show-tick form-control'}), empty_label="<Nurse>")
+    hospital = forms.ModelChoiceField(queryset=Hospital.objects.all(), required=False, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control'}), empty_label="<Hospital>")
+    user_email = forms.EmailField(max_length=50, required=False,
+                                  widget=forms.EmailInput(attrs={'class': 'form-control'}))
+    start_time = forms.DateTimeField(widget=DateTimeWidget(), initial='2000-01-01\t00:00:00')
+    end_time = forms.DateTimeField(widget=DateTimeWidget(), initial='2099-12-31\t23:59:59')
+
+    def __init__(self, *args, **kwargs):
+        show = kwargs.pop('field_control')
+        super(LogSearchForm, self).__init__(*args, **kwargs)
+        if show is not None:
+            if show == "user":
+                self.fields['hospital'].widget = self.fields['hospital'].hidden_widget()
+            elif show == "hospital":
+                self.fields['user_email'].widget = self.fields['user_email'].hidden_widget()
+            elif show == "global":
+                self.fields['hospital'].widget = self.fields['hospital'].hidden_widget()
+                self.fields['user_email'].widget = self.fields['user_email'].hidden_widget()
+
+
+
+
+class AdminCreationForm(forms.Form):
+    """
+    class_object: AdminCreationForm(forms.Form)
+    """
+    email = forms.EmailField(max_length=100, required=True, widget=forms.EmailInput(attrs={'class': 'form-control'}))
+    password = forms.CharField(max_length=50, required=True, widget=forms.TextInput(attrs={'class': 'form-control'}))
+
+
+class DoctorCreationForm(forms.ModelForm):
+    """
+    class_object: DoctorCreationForm(forms.ModelForm)
+    Sub_Class:Meta
+    Methods: clean_first_name, clean_last_name, clean_email
+    """
+
+    class Meta:
+        model = Doctor
+        fields = ('first_name', 'last_name', 'email', 'password', 'hospitals')
+
+    hospitals = forms.ModelMultipleChoiceField(queryset=Hospital.objects.all(), required=True,
+                                               widget=forms.SelectMultiple(attrs={'class': 'form-control'}))
+    first_name = forms.CharField(max_length=50, required=True, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    last_name = forms.CharField(max_length=50, required=True, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}))
+    email = forms.EmailField(max_length=50, required=True, widget=forms.TextInput(attrs={'class': 'form-control'}))
+
+    def clean_first_name(self):  # doesn't allow numbers in first name
+        data = self.cleaned_data['first_name']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def clean_last_name(self):  # doesn't allow numbers in last name
+        data = self.cleaned_data['last_name']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def clean_email(self):  # doesn't allow numbers in last name
+        data = self.cleaned_data['email']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+
+class NurseCreationForm(forms.ModelForm):
+    """
+    class_object: NurseCreationForm(forms.ModelForm)
+    Sub_Class:Meta
+    Methods: clean_last_name
+    """
+
+    class Meta:
+        model = Nurse
+        fields = ('first_name', 'last_name', 'email', 'password', 'working_hospital')
+
+    working_hospital = forms.ModelChoiceField(queryset=Hospital.objects.all(), required=True, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control'}), empty_label="<Working Hospital>")
+    first_name = forms.CharField(max_length=50, required=True, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    last_name = forms.CharField(max_length=50, required=True, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control'}))
+    email = forms.EmailField(max_length=50, required=True, widget=forms.TextInput(attrs={'class': 'form-control'}))
+
+    def clean_first_name(self):  # doesn't allow numbers in first name
+        data = self.cleaned_data['first_name']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def clean_last_name(self):  # doesn't allow numbers in last name
+        data = self.cleaned_data['last_name']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+
+class HospitalCreationForm(forms.ModelForm):
+    """
+    class_object: HospitalCreationForm(forms.ModelForm)
+    Sub_Class:Meta
+    Methods: clean_hospital_name
+    """
+
+    class Meta:
+        model = Hospital
+        fields = ('hospital_name',)
+
+    hospital_name = forms.CharField(max_length=50, required=True,
+                                    widget=forms.TextInput(attrs={'class': 'form-control'}))
+
+    def clean_hospital_name(self):  # doesn't allow numbers in hospital name
+        data = self.cleaned_data['hospital_name']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+
+class CreateTestForm(forms.ModelForm):
+    """
+    class_object: CreateTestForm(forms.ModelForm)
+    Sub_Class:Meta
+    Methods: clean_description
+    """
+
+    class Meta:
+        model = Test
+        fields = ('patient', 'description', 'is_released', 'results')
+
+    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=True, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control'}), empty_label="<Patient>")
+    description = forms.CharField(max_length=50, required=True, widget=forms.TextInput(attrs={'class': 'form-control'}))
+    is_released = forms.CheckboxInput()
+    results = forms.FileField(required=True, widget=forms.FileInput(attrs={'class': 'form-control'}))
+
+    def clean_description(self):  # doesn't allow numbers in last name
+        data = self.cleaned_data['description']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+
+class ShowTestForm(forms.ModelForm):
+    """
+    class_object: ShowTestForm(forms.ModelForm)
+    Sub_Class:Meta
+    Methods: clean_hospital_name
+    """
+
+    class Meta:
+        model = Hospital
+        fields = ('hospital_name',)
+
+    hospital_name = forms.CharField(max_length=50, required=True,
+                                    widget=forms.TextInput(attrs={'class': 'form-control'}))
+
+    def clean_hospital_name(self):  # doesn't allow numbers in last name
+        data = self.cleaned_data['hospital_name']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+
+class MessageForm(forms.Form):
+    """
+    class_object: MessageForm(forms.Form)
+    Sub_Class:Meta
+    Methods: clean_subject, clean_body
+    """
+
+    recipient = forms.EmailField(
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': "Recipient username"}))
+
+    subject = forms.CharField(max_length=100,
+                              widget=forms.TextInput(
+                                  attrs={'class': 'form-control', 'placeholder': "Subject of message"}))
+    body = forms.CharField(max_length=20000,
+                           widget=forms.Textarea(attrs={'class': 'form-control', 'placeholder': "Message goes here"}))
+
+    def clean_subject(self):  # CTRL-C CTRL-V
+        data = self.cleaned_data['subject']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def clean_body(self):  # CTRL-C CTRL-V
+        data = self.cleaned_data['body']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+
+class UpdateMedForm(forms.ModelForm):
+    """
+    class_object: UpdateMedForm(forms.ModelForm)
+    Sub_Class:Meta
+    """
+
+    class Meta:
+        model = Patient
+        fields = ('medical_information',)
+
+    medical_information = forms.FileField(required=True, widget=forms.FileInput(attrs={'class': 'form-control'}))
+
+
+class PrescriptionForm(forms.ModelForm):
+    """
+    class_object: PrescriptionForm(forms.ModelForm)
+    Sub_Class:Meta
+    """
+
+    class Meta:
+        model = Prescription
+        fields = ('prescription_name',)
+
+    prescription_name = forms.CharField(max_length=150, required=True,
+                                        widget=forms.TextInput(attrs={'class': 'form-control'}))
+
+
+class AddPatientPrescriptionForm(forms.Form):
+    """
+    class_object: AddPatientPrescriptionForm(forms.Form)
+    Sub_Class:Meta
+    """
+    prescription = forms.ModelChoiceField(queryset=Prescription.objects.all(), required=True, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control', 'required': ''}), empty_label="<Prescription>")
+    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=True, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control', 'required': ''}), empty_label="<Patient>")
+
+    def clean(self):
+        prescription = self.cleaned_data['prescription']
+        patient = self.cleaned_data['patient']
+
+        if prescription in patient.prescriptions.all():
+            raise forms.ValidationError("That patient has already received that prescription.")
+
+
+class DoctorAdmitPatientForm(forms.Form):
+    """
+    class_object: DoctorAdmitPatientForm(forms.Form)
+    Sub_Class:Meta
+    Methods: clean_reason
+    """
+    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=True, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control'}), empty_label="<Patient>")
+    hospital = forms.ModelChoiceField(queryset=Hospital.objects.all(), required=True, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control'}), empty_label="<Hospital>")
+    reason = forms.CharField(max_length=20000, widget=forms.Textarea(
+        attrs={'class': 'form-control', 'placeholder': 'Reason for admission'}))
+
+    def clean_reason(self):  # doesn't allow numbers in last name
+        data = self.cleaned_data['reason']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def __init__(self, *args, **kwargs):
+        doctor = kwargs.pop('doctor')
+        super(DoctorAdmitPatientForm, self).__init__(*args, **kwargs)
+        hospital_list = []
+        if doctor is not None:
+            for hospital in doctor.hospitals.all():
+                hospital_list.append(hospital.hospital_name)
+            self.fields['hospital'].queryset = Hospital.objects.filter(hospital_name__in=hospital_list)
+
+
+class DoctorTransferPatientForm(forms.Form):
+    hospital = forms.ModelChoiceField(queryset=Hospital.objects.all(), required=True, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control'}), empty_label="<New Hospital>")
+    patient = forms.EmailField(max_length=100, required=False, widget=forms.TextInput(
+        attrs={'class': 'form-control', 'placeholder': 'Patient email address'}))
+    reason = forms.CharField(max_length=20000, required=False, widget=forms.Textarea(
+        attrs={'class': 'form-control', 'placeholder': 'Reason for admission'}))
+
+    def clean_reason(self):  # no odd characters in reason, might break it
+        data = self.cleaned_data['reason']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def __init__(self, *args, **kwargs):
+        doctor = kwargs.pop('doctor')
+        patient_id = kwargs.pop('patient_id')
+        super(DoctorTransferPatientForm, self).__init__(*args, **kwargs)
+        hospital_list = []
+        if doctor is not None:
+            for hospital in doctor.hospitals.all():
+                hospital_list.append(hospital.hospital_name)
+            self.fields['hospital'].queryset = Hospital.objects.filter(hospital_name__in=hospital_list)
+        if patient_id != '0':
+            self.fields['patient'].widget = self.fields['patient'].hidden_widget()
+
+
+class DocEditForm(forms.ModelForm):
+    class Meta:
+        model = Doctor
+        fields = ('doctor_email', 'hospitals')
+
+    hospitals = forms.ModelMultipleChoiceField(queryset=Hospital.objects.all(), required=True,
+                                               widget=forms.SelectMultiple(attrs={'class': 'form-control'}))
+
+    doctor_email = forms.EmailField(max_length=100, required=False, disabled=False, widget=forms.TextInput(
+        attrs={'class': 'form-control'}))
+
+    def __init__(self, *args, **kwargs):
+        status = kwargs.pop('status')
+        self.doctor = kwargs.pop('doctor')
+        super(DocEditForm, self).__init__(*args, **kwargs)
+        if status == "search":
+            self.fields['hospitals'].widget = self.fields['hospitals'].hidden_widget()
+            self.fields['hospitals'].required = False
+            self.fields['doctor_email'].disabled = False
+        if status == "edit":
+            self.fields['doctor_email'].initial = self.doctor.username
+            self.fields['doctor_email'].widget = self.fields['doctor_email'].hidden_widget()
+
+    def clean_doctor_email(self):  # checks if they changed doctor's email if they somehow edit doctor_email
+                                                            #  even though it's hidden during editing of hospitals.
+        doc_email = self.cleaned_data['doctor_email']
+        if self.doctor:
+            if self.doctor.username != doc_email:
+                raise forms.ValidationError("You changed the doctor's email while editing hospitals.")
+        return doc_email
+
+
+class NurseAdmitPatientForm(forms.Form):
+    """
+    class_object: NurseAdmitPatientForm(forms.Form)
+    Sub_Class:Meta
+    Methods: clean_reason
+    """
+    patient = forms.ModelChoiceField(queryset=Patient.objects.all(), required=True, widget=forms.Select(
+        attrs={'class': 'selectpicker show-tick form-control', 'required': ''}), empty_label="<Patient>")
+    reason = forms.CharField(max_length=20000, widget=forms.Textarea(
+        attrs={'class': 'form-control', 'placeholder': 'Reason for admission'}))
+
+    def clean_reason(self):  # doesn't allow numbers in last name
+        data = self.cleaned_data['reason']
+        if any((character == "<" or character == ">" or character == ";") for character in data):
+            raise forms.ValidationError("You used illegal characters.")
+        return data
+
+    def __init__(self, *args, **kwargs):
+        nurse = kwargs.pop('nurse')
+        super(NurseAdmitPatientForm, self).__init__(*args, **kwargs)
+        hospital_list = []
+        if nurse is not None:
+            self.fields['patient'].queryset = Patient.objects.filter()

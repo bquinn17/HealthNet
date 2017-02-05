@@ -1,0 +1,71 @@
+{% extends 'health/base.html' %}
+
+{% block content %}
+
+    <div class = "col-lg-3">
+        <a href = "/appointment/" class="btn btn-lg btn-success btn-block">
+            + Create new Test
+        </a>
+    </div>
+
+    <div class = "col-lg-10 col-lg-offset-1">
+        <table class = "table table-striped table-hover">
+
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Test</th>
+                    <th>Results</th>
+                    <th>Released</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for test in test_list %}
+
+                    <tr>
+                        <td>{{ test.id }}</td>
+                            <td style = "font-size: 13px;">{{ test.description }}</td>
+                        <td>
+                            <a href="/uploads/{{ test.results }}" class="btn btn-lg-1 btn-info">Download</a>
+                        </td>
+                        <td>
+                            {{ test.is_released }}
+                        </td>
+                    </tr>
+
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+
+{#    {% for test in test_list %}#}
+{#        <div class = "row">#}
+{#            <div class = "col-lg-4 col-lg-offset-2">#}
+{#                Test:#}
+{#            </div>#}
+{#            <div class = "col-lg-4">#}
+{#                {{ test.description }}#}
+{#            </div>#}
+{#        </div>#}
+{#        <div class = "row">#}
+{#            <div class = "col-lg-4 col-lg-offset-2">#}
+{#                Results:#}
+{#            </div>#}
+{#            <div class = "col-lg-4">#}
+{#                {{ test.results }}#}
+{#            </div>#}
+{#        </div>#}
+{#        <div class = "row">#}
+{#            <div class = "col-lg-4 col-lg-offset-2">#}
+{#                Results:#}
+{#            </div>#}
+{#            <div class = "col-lg-4">#}
+{#                <a href="/uploads/{{ test.is_released }}" class="btn btn-lg-1 btn-info">Release</a><br>#}
+{#            </div>#}
+{#        </div>#}
+{#    {% endfor %}#}
+
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends 'health/base.html' %}
+{% block content %}
+
+    <div class = "col-lg-6 col-lg-offset-3 well well-lg">
+
+        <form enctype="multipart/form-data" method="POST" class="post-form form-horizontal">{% csrf_token %}
+
+            <fieldset>
+                <legend>Patient Admission</legend>
+            </fieldset>
+
+            {{ form.as_p }}
+
+            <button class = "btn btn-success" style = "float:right" type = "submit">Submit</button>
+
+        </form>
+
+    <a href="/accounts/patients/"><button class="btn btn-primary" style = "float:left">Cancel</button></a>
+
+    </div>
+
+{% endblock %}

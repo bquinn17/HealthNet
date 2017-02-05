@@ -1,0 +1,17 @@
+{% extends 'health/base.html' %}
+
+<!-- Will most definitely change this file. Simply wanted a placeholder for now. -->
+{% block content %}
+    <div class = "col-lg-4 col-lg-offset-4">
+
+        <div class = "row">
+            <h1>Welcome</h1>
+        </div>
+
+        <div class = "row">
+            <a href = "/accounts/login/" class = "btn btn-lg btn-primary btn-block">Login</a>
+            <a href = "/accounts/register/" class = "btn btn-lg btn-info btn-block">Register</a>
+        </div>
+
+    </div>
+{% endblock %}

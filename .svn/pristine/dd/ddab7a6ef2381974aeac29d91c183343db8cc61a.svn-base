@@ -1,0 +1,22 @@
+from django.db import models
+from .user import User
+from .simple_models import Appointment
+from django.utils import timezone
+
+
+class Actor(models.Model, User):
+    # Do we need this?
+    appointments = []
+
+    class Meta:
+        app_name = 'health'
+        db_table = 'health_Actor'
+
+    def create_appointment(self):
+        self.appointments += Appointment(timezone.now(), "This is the description")
+        #TODO
+        return
+
+    def update_appointment(self):
+        # TODO
+        return

@@ -1,0 +1,60 @@
+#registerForm
+{
+
+	margin-top: 5%;
+
+}
+
+.form-group
+{
+
+	padding-bottom: 10%;
+
+}
+
+.my-btn-group
+{
+
+	padding-bottom: 5%;
+
+}
+
+legend
+{
+
+	border-bottom: 1px solid white;
+
+}
+
+#navUsername
+{
+	color: #5bc0de;
+}
+
+#navBrand
+{
+	color: #d9691a;
+}
+
+.modalField
+{
+	color: #c8c8c8
+}
+
+#banner
+{
+	max-width: 40%;
+}
+
+#footer
+{
+	background-color: #3d4954;
+	font-style: italic;
+	margin-top: 10px;
+	padding: 5px;
+	font-size: 12px;
+}
+
+/*
+Good????
+*/

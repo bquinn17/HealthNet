@@ -1,0 +1,170 @@
+
+
+from django.contrib.auth.models import User
+from django.contrib.auth.models import User
+from django.db import models
+from django.utils import timezone
+
+
+class Hospital(models.Model):
+    """
+    Class_Name: Hospital
+    -Stores information for Hospital object
+    Attributes: hospital name
+    SubClasses: Meta
+        responsible for creating hospitals
+    """
+    hospital_name = models.CharField(max_length=50)
+
+    number_patients = models.IntegerField(default=0)
+    number_patient_visits = models.IntegerField(default=0)
+    average_number_hospital_visits_per_patient = models.FloatField(default=0)
+    average_patient_stay_time = models.FloatField(default=0)
+    # stay time in seconds, will display in hours, min, sec in views
+
+    def __str__(self):
+        return self.hospital_name
+
+
+class Prescription(models.Model):
+    """
+    Class_Name: Prescription
+    -Stores information for prescription object
+    Attributes: prescription name
+    SubClasses: Meta
+        responsible for creating hospitals
+    """
+    prescription_name = models.CharField(max_length=100, default="None")
+
+    times_prescribed = models.IntegerField(default=0)  # for commonly prescribed drugs
+
+    def __str__(self):
+        return "Prescription: " + self.prescription_name
+
+    class Meta:
+        verbose_name_plural = "Prescriptions"
+        verbose_name = "Prescription"
+
+
+class Patient(User, models.Model):
+    """
+    Class_Name: Patient
+    -Stores information for patient object
+    Attributes:address,phone_number, insurance_id, insurance_provider, emergency_contact_name, emergency_contact_phone_number
+    SubClasses: Meta
+        responsible for labeling on admin page
+
+    """
+    user = models.OneToOneField(User)
+    address = models.CharField(max_length=100, default='None')
+    phone_number = models.CharField(max_length=10, default='None')
+    insurance_id = models.CharField(max_length=20, default='None')
+    insurance_provider = models.CharField(max_length=30, default='None')
+    main_hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, blank=True, null=True)
+    # , null=True, blank=True)  # each patient has one main hospital
+    emergency_contact_name = models.CharField(max_length=50, default='None')
+    emergency_contact_phone_number = models.CharField(max_length=10, default='None')
+    prescriptions = models.ManyToManyField(Prescription)
+    medical_information = models.FileField(upload_to='patient_uploads/')
+
+    # each patient can be checked into only 1 hospital
+    checked_in_hospital = models.ForeignKey(Hospital, default=None, null=True, blank=True,
+                                            related_name="checked_in_hospital+")
+    current_hospital_id = models.IntegerField(default=0)
+    is_checked_in = models.BooleanField(default=False)
+
+    # stuff for statistics
+    avg_hospital_visit_time = models.IntegerField(default=0)
+    number_hospital_visits = models.IntegerField(default=0)
+    temp_check_in_time = models.DateTimeField(default=timezone.now())
+    temp_check_out_time = models.DateTimeField(default=timezone.now())
+
+    def __str__(self):
+        return "Patient: " + self.first_name + " " + self.last_name
+
+    class Meta:  # sets class name in admin site
+        verbose_name = 'Patient'
+        verbose_name_plural = 'Patients'
+
+
+class Nurse(User, models.Model):
+    """
+    Class_Name: Nurse
+    -Stores information for nurse object
+    Attributes:address,phone_number
+    SubClasses: Meta
+        responsible for labeling on admin page
+    """
+    user = models.OneToOneField(User)
+    working_hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return "Nurse: " + self.first_name + " " + self.last_name
+
+    class Meta:  # sets class name in admin site
+        verbose_name = 'Nurse'
+        verbose_name_plural = 'Nurses'
+
+
+class Doctor(User, models.Model):
+    """
+    Class_Name: Doctor
+    -Stores information for Doctor object
+    Attributes: address, phone_number
+    SubClasses: Meta
+        responsible for labeling on admin page
+    """
+    user = models.OneToOneField(User)
+    hospitals = models.ManyToManyField(Hospital, default=None)
+
+    def __str__(self):
+        return "Doctor: " + self.first_name + " " + self.last_name
+
+    class Meta:  # sets class name in admin site
+        verbose_name = 'Doctor'
+        verbose_name_plural = 'Doctors'
+
+
+class Appointment(models.Model):
+    """
+    Class_Name: Appointment
+    -Stores information for Hospital object
+    Attributes: Appointment Date
+    SubClasses: Meta
+        responsible for creating appointment
+    """
+
+    def __str__(self):
+        return self.description
+
+    start_date = models.DateTimeField('Start Time', default=timezone.now)
+    end_date = models.DateTimeField('End Time', default=(timezone.now() + timezone.timedelta(hours=1)))
+    description = models.CharField(max_length=200)
+    patient = models.ForeignKey(Patient, default=None)
+    doctor = models.ForeignKey(Doctor, default=None)
+    hospital = models.ForeignKey(Hospital, default=None)
+
+
+class Test(models.Model):
+    """
+    Class_Name: Tests
+    -Stores information for tests
+    Attributes: test name
+    """
+    def __str__(self):
+        return self.description
+
+    issuer = models.ForeignKey(Doctor, null=True)
+    patient = models.ForeignKey(Patient)
+    description = models.CharField(max_length=200)
+    is_released = models.BooleanField(default=False)
+    results = models.FileField(upload_to='tests/')
+
+
+class Reason(models.Model):
+    name = models.CharField(default='', max_length=100)
+    uses = models.IntegerField(default=0)
+    hospital = models.ForeignKey(Hospital, default= None)
+
+    def __str__(self):
+        return "Reason: " + str(self.name) + " at " + str(self.hospital.hospital_name)

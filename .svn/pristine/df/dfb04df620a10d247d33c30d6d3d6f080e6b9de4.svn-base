@@ -1,0 +1,25 @@
+{% extends 'health/base.html' %}
+{% block content %}
+    <div id = "registerForm" class = "col-lg-6 col-lg-offset-3">
+			<h1>New patient</h1>
+
+			<div class = "well well-lg">
+
+				<form method="POST" class="post-form form-horizontal">{% csrf_token %}
+
+					<fieldset>
+						<div class = "form-group">
+{#                            <input type="text" name="username" value="" id="username">#}
+{#                            <label for="password">Password:</label>#}
+{#                            <input type="password" name="password" value="" id="password">#}
+							{{ form.as_p }}
+							<br/><button class = "btn btn-primary" type="submit" >Save</button>
+						</div>
+					</fieldset>
+
+				</form>
+
+			</div>
+
+		</div>
+{% endblock %}

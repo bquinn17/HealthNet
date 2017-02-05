@@ -1,0 +1,27 @@
+{% extends "health/base.html" %}
+
+{% block content %}
+    <div class ="col-lg-12">
+        <h7>Name: {{ patient.first_name }} {{ patient.last_name}}
+        <br>
+        Email: {{ patient.username }}<br>
+        Phone Number: {{ patient.phone_number }}<br>
+        Insurance ID: {{ patient.insurance_id }}<br>
+        Insurance Provider: {{ patient.insurance_provider }}<br>
+        Main Hospital: {{ patient.main_hospital }}<br>
+        Emergency Contact Name: {{ patient.emergency_contact_name }}<br>
+        Emergency Contact Phone Number: {{ patient.emergency_contact_phone_number }}<br>
+        Medical information: <a href="/media/{{ patient.medical_information }}" class="btn btn-lg-1 btn-info"> Download </a> <br>
+        Prescriptions: <br>
+            </h7>
+        </div>
+        <div class = "col-lg-12">
+        {% for prescription in prescriptions %}
+            {{ prescription }}
+            <br>
+            {% endfor %}
+        </div>
+
+
+
+{% endblock %}

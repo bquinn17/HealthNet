@@ -1,0 +1,23 @@
+2016-12-01 21:18:29		Doctor	username:	doctor@gmail.com                                             		Action: Test created for phylis@g.com by Dr. Doctor called Test for pulse
+2016-12-01 21:18:38		Doctor	username:	doctor@gmail.com                                             		Action: Test created for phylis@g.com by Dr. Doctor called Test for pulse
+2016-12-01 21:21:22		Doctor	username:	doctor@gmail.com                                             		Action: Appointment created for 2016-12-01 21:13:00 with Dr. Doctor  at the lucas center
+2016-12-02 08:26:31		Doctor	username:	doctor@gmail.com                                             		Action: Appointment created for 2016-12-02 08:05:00 with Dr. Doctor  at the lucas center
+2016-12-03 00:48:31		Doctor	username:	doctor@gmail.com                                             		Action: Prescription added to: the pills
+2016-12-03 00:50:51		Doctor	username:	doctor@gmail.com                                             		Action: Prescription added to: the pills
+2016-12-03 13:29:06		Doctor	username:	doctor@gmail.com                                             		Action: Prescription added to: the pills
+2016-12-03 16:23:16		Doctor	username:	doctor@gmail.com                                             		Action: Message sent to doctor@gmail.com
+2016-12-03 16:29:00		Doctor	username:	doctor@gmail.com                                             		Action: Message sent to nurse2@gmail.com
+2016-12-03 17:28:35		Doctor	username:	doctor@gmail.com                                             		Action: Message sent to doctor@gmail.com
+2016-12-03 19:06:27		Doctor	username:	doctor@gmail.com                                             		Action: Prescription added to: the pills
+2016-12-03 19:06:34		Doctor	username:	doctor@gmail.com                                             		Action: Prescription added to: the pills
+2016-12-03 19:06:51		Doctor	username:	doctor@gmail.com                                             		Action: Patient : 6 (phylis@g.com) discharged from the lucas center
+2016-12-03 19:23:06		Doctor	username:	doctor@gmail.com                                             		Action: Prescription added to: the pills
+2016-12-03 19:23:15		Doctor	username:	doctor@gmail.com                                             		Action: Prescription : 1 (the pills) removed from Mr. Patient
+2016-12-03 19:30:38		Doctor	username:	doctor@gmail.com                                             		Action: Patient : 6 (phylis@g.com) discharged from the lucas center
+2016-12-03 19:30:39		Doctor	username:	doctor@gmail.com                                             		Action: Patient 6(phylis nurt@g.com) transferred to hospital 1(the lucas center) For the following reason: "sdfkjsdlkfjs"
+2016-12-03 19:51:07		Doctor	username:	doctor@gmail.com                                             		Action: Patient : 6 (phylis@g.com) discharged from the lucas center
+2016-12-03 19:51:07		Doctor	username:	doctor@gmail.com                                             		Action: Patient 6(phylis nurt@g.com) transferred to hospital 1(the lucas center) For the following reason: "reason"
+2016-12-03 19:51:29		Doctor	username:	doctor@gmail.com                                             		Action: Patient : 6 (phylis@g.com) discharged from the lucas center
+2016-12-03 19:51:29		Doctor	username:	doctor@gmail.com                                             		Action: Patient 6(phylis nurt@g.com) transferred to hospital 1(the lucas center) For the following reason: "reason"
+2016-12-03 19:51:48		Doctor	username:	doctor@gmail.com                                             		Action: Patient : 6 (phylis@g.com) discharged from the lucas center
+2016-12-03 19:51:48		Doctor	username:	doctor@gmail.com                                             		Action: Patient 6(phylis nurt@g.com) transferred to hospital 1(the lucas center) For the following reason: "Reason"

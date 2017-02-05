@@ -1,0 +1,6 @@
+2016-12-04 18:15:52		Patient	username:	patient@patient.test                                        		Action: Appointment created for 2017-11-11 11:11:00 with Dr. Doctor  at Hospital 1
+2016-12-04 18:15:52		Patient	username:	patient@patient.test                                        		Action: Appointment created for 2017-11-11 11:11:00 with Dr. Doctor  at Hospital 1
+2016-12-04 18:15:52		Patient	username:	patient@patient.test                                        		Action: Appointment deleted for 2011-11-11 11:11:00 with Dr. Doctor  at Hospital 1
+2016-12-04 18:15:53		Patient	username:	patient@patient.test                                        		Action: Message sent to patient@patient.test
+2016-12-04 18:15:53		Patient	username:	patient@patient.test                                        		Action: Message sent to patient@patient.test
+2016-12-04 18:15:54		Patient	username:	patient@patient.test                                        		Action: Appointment updated to 2017-11-12 11:11:00 with Dr. Doctor2  at Hospital 1

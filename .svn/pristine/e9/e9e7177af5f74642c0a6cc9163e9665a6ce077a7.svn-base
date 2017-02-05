@@ -1,0 +1,16 @@
+from django.db import models
+#test
+from django.db import models
+
+class User(models.Model):
+    prescriptions = []
+    image = []
+    emerg_contact = models.CharField(max_length=50) 
+
+    def update_profile(self):
+        TODO 
+        return  
+
+    def export_info(self):
+        TODO
+        return

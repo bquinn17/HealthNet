@@ -1,0 +1,126 @@
+{% extends 'health/base.html' %}
+{% block content %}
+
+    <!-- ALERT MESSAGE -->
+    {% if invalid_email %}
+        <div class = "alert alert-dismissable alert-danger">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <h4>Invalid Email</h4>
+            <p>A user with that email does not exist.</p>
+        </div>
+    {% elif message_sent %}
+        <div class = "alert alert-dismissable alert-success">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <h4>Success!</h4>
+            <p>Message sent.</p>
+        </div>
+    {% endif %}
+    <!-- END ALERT MESSAGE -->
+
+    <!-- INBOX -->
+    <div class = "col-lg-4 well well-lg" id = "inbox">
+
+        <a href = "/accounts/send_message/" class = "btn btn-lg btn-block btn-success" style = "margin-bottom: 5%">
+            Compose Message
+        </a>
+
+        <legend>Inbox</legend>
+
+        {% if no_messages %}
+
+            <p>No messages at this time.</p>
+
+        {% else %}
+            {% for subject in message_subjects %}
+
+                <div class = "panel panel-info inboxEntry" name = "{{ forloop.counter }}">
+
+                    <div class = "panel-heading">
+                        <h3 class = "panel-title" id = "inbox{{ forloop.counter }}">
+                            {{ subject }}
+                        </h3>
+                    </div>
+                    <div class = "panel-body">
+                        Click to View Message
+                    </div>
+
+                </div>
+
+            {% endfor %}
+        {% endif %}
+
+    </div>
+    <!-- END INBOX -->
+
+    <!-- MESSAGE VIEW -->
+    <div class = "col-lg-7 col-lg-offset-1" id = "messageView">
+
+        <!-- RENDER MESSAGES -->
+        {% for subject in message_subjects %}
+            <div id = "{{ forloop.counter }}" class = "messageRender">
+                <legend>{{ subject }}</legend>
+            </div>
+        {% endfor %}
+        <!-- this is so stupid. python why??? -->
+        {% for body in message_body_list %}
+            <script>
+                $(document).ready(function(){
+                   $("#{{ forloop.counter }}").append("<p>{% for line in body %} {{ line }} <br>  {% endfor %}</p>");
+                });
+            </script>
+        {% endfor %}
+        {% for sender in message_sender_list %}
+            <script>
+                $(document).ready(function(){
+                    $("#inbox{{ forloop.counter }}").append("<span style = 'font-size: 12px; color: #df691a;'> - {{ sender }}</span>");
+                    $("#{{ forloop.counter }}").append("<p style = 'color: #5bc0de; font-style: italic;'>{{ sender }}</p>");
+                });
+            </script>
+        {% endfor %}
+        <!-- END RENDER MESSAGES -->
+
+    </div>
+    <!-- END MESSAGE VIEW -->
+
+    <script>
+
+        $(document).ready(function(){
+
+            var messageID = -1;
+
+            $(".inboxEntry").click(function(){
+
+                messageID = parseInt($(this).attr('name'));
+
+                $("#messageView").children().css("display", "none");
+                $("#"+messageID).css("display", "block");
+
+            });
+
+            if(messageID == -1){
+
+
+                $("#messageView").children().css("display", "none");
+                $("#messageView").append(
+
+                        "<p>Click a message to view</p>"
+
+                );
+
+            }
+
+            // CSS Styling
+            $(".inboxEntry").hover(function(){
+                $(this).children(".panel-heading").css("background-color", "#40879c");
+                $(this).children(".panel-body").css("background-color", "#bbbbbb");
+            },
+            function(){
+                $(this).children(".panel-heading").css("background-color", "#5bc0de");
+                $(this).children(".panel-body").css("background-color", "white");
+            });
+
+        });
+
+    </script>
+
+{% endblock %}

@@ -1,0 +1,22 @@
+from django import forms
+from django.core.validators import RegexValidator
+from django.db import models
+
+from .models import Patient
+
+
+class PatientRegistrationForm(forms.ModelForm):
+    class Meta:
+        model = Patient
+        fields = ('email', 'first_name', 'last_name', 'password', 'medical_information',)
+
+    # all the fields for the form
+    phone_regex = RegexValidator(regex=r'^\+?1?\d{9,15}$',
+                                 message="Phone number must be entered in the format: '+999999999'. Up to 15 digits allowed.")
+    address = forms.CharField(max_length=100, required=False)
+    phone_number = models.CharField(max_length=15, validators=[phone_regex], blank=True)
+    insurance = forms.CharField(max_length=10, required=False)
+    emergency_contact_name = forms.CharField(max_length=50, required=False)
+    emergency_contact_phone_number = models.CharField(max_length=15, validators=[phone_regex], blank=True)
+
+    password = forms.CharField(widget=forms.PasswordInput())

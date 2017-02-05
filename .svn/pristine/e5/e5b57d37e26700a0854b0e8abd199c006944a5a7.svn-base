@@ -1,0 +1,1608 @@
+from django.test import TestCase, Client, RequestFactory
+from .models import *
+from .views import *
+from .forms import *
+from django.core.files import File
+import datetime
+import os, shutil
+
+
+# TEST USERS
+class TestRegistrant:
+    @staticmethod
+    def is_authenticated():
+        return 0
+
+    @staticmethod
+    def get(string):
+        if string == 'email':
+            return "who@where.com"
+        else:
+            return 0
+
+    is_staff = 0
+
+    class groups:
+        name = "None"
+
+        @staticmethod
+        def all():
+            return [TestRegistrant.groups, ]
+
+
+class TestNurse:
+    @staticmethod
+    def is_authenticated():
+        return 1
+
+    username = "nurse@nurse.test"
+    id = 3
+    pk = id
+    is_staff = 0
+
+    @staticmethod
+    class groups:
+        name = "Nurse"
+
+        @staticmethod
+        def all():
+            return [TestNurse.groups, ]
+
+
+class TestDoctor:
+    def __init__(self, id=1):
+        self.id = id
+
+    @staticmethod
+    def is_authenticated():
+        return 1
+
+    username = "doctor@doctor.test"
+    is_staff = 0
+    last_name = "Doctor"
+
+    @staticmethod
+    class groups:
+        name = "Doctor"
+
+        @staticmethod
+        def all():
+            return [TestDoctor.groups, ]
+
+
+class TestPatient:
+    @staticmethod
+    def is_authenticated():
+        return 1
+
+    username = "patient@patient.test"
+    email = username
+    first_name = "Patient"
+    last_name = "Patient"
+    id = 2
+
+    @staticmethod
+    def get_full_name():
+        return "Patient Patient"
+
+    @staticmethod
+    class groups:
+        name = "Patient"
+
+        @staticmethod
+        def all():
+            return [TestPatient.groups, ]
+
+
+class TestAdmin:
+    @staticmethod
+    def is_authenticated():
+        return 1
+
+    id = 133
+    is_staff = True
+    username = "admin@admin.test"
+
+    class groups:
+        name = "Admin"
+
+        @staticmethod
+        def all():
+            return [TestAdmin.groups, ]
+
+
+class PostGetPrescription:
+    @staticmethod
+    def get(string):
+        if string == "patient":
+            return 2
+        if string == "prescription":
+            return 1
+
+
+# UNIT TESTS - TODO: statistics test, view medical info, add prescription to patient
+class ActivityLogTest(TestCase):
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=0)  # sets up fake hospitals
+        Hospital.objects.create(hospital_name="Hospital 2", id=1)
+        Patient.objects.create(first_name="Patient", last_name="Patient", username="patient@patient.test",
+                               email="patient@patient.test", id=2, main_hospital=Hospital.objects.get(id=0))
+        Nurse.objects.create(first_name="Nurse", last_name="Nurse", username="nurse@nurse.test", working_hospital_id=0)
+        doctor = Doctor.objects.create(first_name="Doctor", last_name="Doctor", username="doctor@doctor.test", id=1)
+        doctor.hospitals = [Hospital.objects.get(id=0), Hospital.objects.get(id=1)]
+        User.objects.create(username='admin@admin.test', is_staff=1)
+
+        # removes all log files used in each test just in case they exist before each unit unit test
+        if os.path.exists('logs/patients/who@where.com_activity_log.txt'):
+            os.remove('logs/patients/who@where.com_activity_log.txt')
+        if os.path.exists('logs/hospitals/Hospital_1_activity_log.txt'):
+            os.remove('logs/hospitals/Hospital_1_activity_log.txt')
+        if os.path.exists('logs/doctors/doctor@doctor.test_activity_log.txt'):
+            os.remove('logs/doctors/doctor@doctor.test_activity_log.txt')
+        if os.path.exists('logs/admins/admin@admin.test_activity_log.txt'):
+            os.remove('logs/admins/admin@admin.test_activity_log.txt')
+        if os.path.exists('logs/nurses/nurse@nurse.test_activity_log.txt'):
+            os.remove('logs/nurses/nurse@nurse.test_activity_log.txt')
+        if os.path.exists('logs/hospitals/Hospital_2_activity_log.txt'):
+            os.remove('logs/hospitals/Hospital_2_activity_log.txt')
+        if os.path.exists('logs/patients/patient@patient.test_activity_log.txt'):
+            os.remove('logs/patients/patient@patient.test_activity_log.txt')
+
+    def test_patient_registration_logging(self):
+        request = Client()
+        request.user = TestRegistrant()
+        request.POST = TestRegistrant()
+        log_activity(action="Patient Registered", request=request)
+        file = open('logs/patients/who@where.com_activity_log.txt', 'r')
+        file2 = open('logs/hospitals/Hospital_1_activity_log.txt', 'r')
+        self.assertTrue(str(file.read())[101:127] == 'Action: Patient Registered',
+                        "Registration logging not working. Action was " + str(file.read())[101:127])
+        self.assertTrue(str(file2.read())[101:127] == 'Action: Patient Registered',
+                        "Registration logging not working for hospital. Action was " + str(file.read())[101:127])
+        file.close()
+        file2.close()
+
+    def test_patient_logging(self):
+        request = Client()
+        request.user = TestPatient
+        request.user.main_hospital = Hospital.objects.get(id=0)
+        log_activity(action='Testing...', request=request)
+        file = open('logs/patients/patient@patient.test_activity_log.txt', 'r')
+        file2 = open('logs/hospitals/Hospital_1_activity_log.txt', 'r')
+        self.assertTrue(str(file.read())[101:119] == 'Action: Testing...',
+                        "Patient logging not working. Action was: " + file.read()[101:120])
+        self.assertTrue(str(file2.read())[101:119] == 'Action: Testing...',
+                        "Patient logging in hospital not working. Action was: " + file2.read()[101:120])
+        file.close()
+        file2.close()
+
+    def test_nurse_logging(self):
+        request = Client()
+        request.user = TestNurse
+        log_activity(action='Testing...', request=request)
+        file = open('logs/nurses/nurse@nurse.test_activity_log.txt', 'r')
+        file2 = open('logs/hospitals/Hospital_1_activity_log.txt', 'r')
+        self.assertTrue(str(file.read())[101:119] == 'Action: Testing...',
+                        "Nurse logging not working. Action was: " + file.read()[101:120])
+        self.assertTrue(str(file2.read())[101:119] == 'Action: Testing...',
+                        "Nurse logging in hospital not working. Action was: " + file2.read()[101:120])
+        file.close()
+        file2.close()
+
+    def test_doctor_logging(self):
+        request = Client()
+        request.user = TestDoctor()
+        log_activity(action='Testing...', request=request)
+        file = open('logs/doctors/doctor@doctor.test_activity_log.txt', 'r')
+        file2 = open('logs/hospitals/Hospital_1_activity_log.txt', 'r')
+        file3 = open('logs/hospitals/Hospital_2_activity_log.txt', 'r')
+        self.assertTrue(str(file.read())[101:119] == 'Action: Testing...',
+                        "Doctor logging not working. Action was: " + file.read()[101:120])
+        self.assertTrue(str(file2.read())[101:119] == 'Action: Testing...',
+                        "Doctor logging in hospital not working. Action was: " + file2.read()[101:120])
+        self.assertTrue(str(file3.read())[101:119] == 'Action: Testing...',
+                        "Doctor logging in hospital not working. Action was: " + file2.read()[101:120])
+        file.close()
+        file2.close()
+        file3.close()
+
+    def test_admin_logging(self):
+        request = Client()
+        request.user = TestAdmin
+        log_activity(action='Testing...', request=request)
+        file = open('logs/admins/admin@admin.test_activity_log.txt', 'r')
+        self.assertTrue(str(file.read())[101:119] == 'Action: Testing...',
+                        "Admin logging not working. Action was: " + file.read()[101:119])
+        file.close()
+
+    def tearDown(self):  # removes all files possibly created during each unit test
+        if os.path.exists('logs/patients/who@where.com_activity_log.txt'):
+            os.remove('logs/patients/who@where.com_activity_log.txt')
+        if os.path.exists('logs/hospitals/Hospital_1_activity_log.txt'):
+            os.remove('logs/hospitals/Hospital_1_activity_log.txt')
+        if os.path.exists('logs/doctors/doctor@doctor.test_activity_log.txt'):
+            os.remove('logs/doctors/doctor@doctor.test_activity_log.txt')
+        if os.path.exists('logs/admins/admin@admin.test_activity_log.txt'):
+            os.remove('logs/admins/admin@admin.test_activity_log.txt')
+        if os.path.exists('logs/nurses/nurse@nurse.test_activity_log.txt'):
+            os.remove('logs/nurses/nurse@nurse.test_activity_log.txt')
+            # if os.path.exists('logs/hospitals/Hospital_2_activity_log.txt'):
+            #   os.remove('logs/hospitals/Hospital_2_activity_log.txt')
+
+
+class PatientRegistrationTest(TestCase):
+    # good registration form data for use in some tests
+    good_form_data = {'email': "who@where.com", 'first_name': "Billy", 'last_name': "Bob",
+                      'password': "password",
+                      'medical_information': '', 'phone_number': '1111111111', 'insurance_provider': "No one",
+                      'insurance_id': '2222222222', 'address': "Nowhere",
+                      'emergency_contact_phone_number': '3333333333',
+                      'emergency_contact_name': 'No body', "main_hospital": 0}
+
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=0)  # sets up a fake hospital
+
+    def test_patient_registration_form_create(self):
+        form = PatientRegistrationForm(data=self.good_form_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_patient_registration_form_email(self):
+        bad_email_form_data = {  # test if form rejects invalid email
+            'email': "whowhere.com", 'first_name': "Billy", 'last_name': "Bob", 'password': "password",
+            'medical_information': '', 'phone_number': '1111111111', 'insurance_provider': "No one",
+            'insurance_id': '2222222222', 'address': "Nowhere", 'emergency_contact_phone_number': '3333333333',
+            'emergency_contact_name': 'No body', "main_hospital": 0}
+        form = PatientRegistrationForm(data=bad_email_form_data)
+        self.assertFalse(form.is_valid(), "invalid email accepted")
+
+    def test_patient_registration_form_long_phone_number(self):
+        long_phone_number_form_data = {  # test if form rejects phone number too long
+            'email': "who@where.com", 'first_name': "Billy", 'last_name': "Bob", 'password': "password",
+            'medical_information': '', 'phone_number': '1111111111111', 'insurance_provider': "No one",
+            'insurance_id': '2222222222', 'address': "Nowhere", 'emergency_contact_phone_number': '3333333333',
+            'emergency_contact_name': 'No body', "main_hospital": 0}
+        form = PatientRegistrationForm(data=long_phone_number_form_data)
+        self.assertFalse(form.is_valid(), "took phone number that was too long")
+
+    def test_patient_registration_form_create_valid_names(self):
+        bad_names_form_data = {  # test if form rejects numbers in first, last names
+            'email': "who@where.com", 'first_name': "Bi<>;lly", 'last_name': "Bo<><><>>>><>;b", 'password': "password",
+            'medical_information': '', 'phone_number': '1111111111', 'insurance_provider': "No one",
+            'insurance_id': '2222222222', 'address': "Nowhere", 'emergency_contact_phone_number': '3333333333',
+            'emergency_contact_name': 'No body', "main_hospital": 0}
+        form = PatientRegistrationForm(data=bad_names_form_data)
+        self.assertFalse(form.is_valid(), "accepted odd characters in patient name")
+
+    def test_patient_registration_form_valid_phone_number(self):
+        bad_phone_number_form_data = {  # test if form rejects letters in phone numbers
+            'email': "who@where.com", 'first_name': "Billy", 'last_name': "Bob", 'password': "password",
+            'medical_information': '', 'phone_number': '11111av111', 'insurance_provider': "No one",
+            'insurance_id': '2222222222', 'address': "Nowhere", 'emergency_contact_phone_number': '33333pa333',
+            'emergency_contact_name': 'No body', "main_hospital": 0}
+        form = PatientRegistrationForm(data=bad_phone_number_form_data)
+        self.assertFalse(form.is_valid(), "accepted letters in phone numbers")
+
+    def test_patient_registration_success(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.good_form_data
+        request.FILES = None
+        request.META = {}
+        request.user = TestRegistrant()
+        patient_registration(request=request)
+        os.remove('logs/patients/who@where.com_activity_log.txt')  # removes filthy activity log byproducts
+        os.remove('logs/hospitals/Hospital_1_activity_log.txt')
+        self.assertTrue(Patient.objects.filter(username="who@where.com").exists())
+
+    def test_patient_registration_email_used(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.good_form_data
+        request.FILES = None
+        request.user = TestRegistrant()
+        request.META = {}
+        patient_registration(request=request)  # creates 2 users with email/username who@where.com in test database
+        patient_registration(request=request)
+        os.remove('logs/patients/who@where.com_activity_log.txt')  # removes filthy activity log byproducts
+        os.remove('logs/hospitals/Hospital_1_activity_log.txt')
+        self.assertFalse(Patient.objects.filter(id=2).exists())  # if a second user exists in the test database,
+        # the test fails
+
+
+class PatientProfileUpdateTest(TestCase):
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=1)
+        Patient.objects.create(first_name="Patient", last_name="Patient", username="patient@patient.test",
+                               email="patient@patient.test", id=2, main_hospital=Hospital.objects.get(id=1))
+
+    def test_form_valid_all_fields(self):
+        form = PatientUpdateForm(data={'first_name': "Billy", 'last_name': "Bob",
+                                       'phone_number': '1111111111', 'address': "Nowhere",
+                                       'emergency_contact_phone_number': '3333333333',
+                                       'emergency_contact_name': 'No body'})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_update_profile_all_fields(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'first_name': "Billy", 'last_name': "Bob",
+                        'phone_number': '1111111111', 'address': "Nowhere",
+                        'emergency_contact_phone_number': '3333333333',
+                        'emergency_contact_name': 'No body'}
+        request.user = TestPatient()
+
+        update_patient_profile(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed during patient profile update")
+        patient = Patient.objects.get(id=2)
+        self.assertTrue(patient.first_name == "Billy", "Patient first name not set during patient profile update")
+        self.assertTrue(patient.last_name == "Bob", "Patient last name not set during patient profile update")
+        self.assertTrue(patient.address == "Nowhere", "Patient address not set during patient profile update")
+        self.assertTrue(patient.phone_number == "1111111111",
+                        "Patient phone number not set during patient profile update")
+        self.assertTrue(patient.emergency_contact_name == "No body",
+                        "Patient emergency contact name not set during patient profile update")
+        self.assertTrue(patient.emergency_contact_phone_number == "3333333333",
+                        "Patient emergency contact number not set during patient profile update")
+
+    def test_update_profile_bad_phone_number(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'first_name': "Billy", 'last_name': "Bob",
+                        'phone_number': '111s111111', 'address': "Nowhere",
+                        'emergency_contact_phone_number': '3333333333',
+                        'emergency_contact_name': 'No body'}
+        request.user = TestPatient()
+
+        update_patient_profile(request)
+
+        self.assertTrue(Patient.objects.get(id=2).first_name == "Patient",
+                        "Patient info updated with bad form data (phone number)")
+
+    def test_update_profile_bad_first_name(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'first_name': "Bill>>y", 'last_name': "Bob",
+                        'phone_number': '1111111111', 'address': "Nowhere",
+                        'emergency_contact_phone_number': '3333333333',
+                        'emergency_contact_name': 'No body'}
+        request.user = TestPatient()
+
+        update_patient_profile(request)
+
+        self.assertTrue(Patient.objects.get(id=2).first_name == "Patient",
+                        "Patient info updated with bad form data (first name)")
+
+    def test_update_profile_bad_last_name(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'first_name': "Billy", 'last_name': "Bo>>b",
+                        'phone_number': '1111111111', 'address': "Nowhere",
+                        'emergency_contact_phone_number': '3333333333',
+                        'emergency_contact_name': 'No body'}
+        request.user = TestPatient()
+
+        update_patient_profile(request)
+
+        self.assertTrue(Patient.objects.get(id=2).first_name == "Patient",
+                        "Patient info updated with bad form data (last name)")
+
+    def test_update_profile_bad_address(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'first_name': "Billy", 'last_name': "Bob",
+                        'phone_number': '1111111111', 'address': "Nowhe;re",
+                        'emergency_contact_phone_number': '3333333333',
+                        'emergency_contact_name': 'No body'}
+        request.user = TestPatient()
+
+        update_patient_profile(request)
+
+        self.assertTrue(Patient.objects.get(id=2).first_name == "Patient",
+                        "Patient info updated with bad form data (address)")
+
+    def test_update_profile_bad_emergency_name(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'first_name': "Billy", 'last_name': "Bob",
+                        'phone_number': '1111111111', 'address': "Nowhere",
+                        'emergency_contact_phone_number': '3333333333',
+                        'emergency_contact_name': 'No;body'}
+        request.user = TestPatient()
+
+        update_patient_profile(request)
+
+        self.assertTrue(Patient.objects.get(id=2).first_name == "Patient",
+                        "Patient info updated with bad form data (emergency contact name)")
+
+    def test_update_profile_bad_emergency_number(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'first_name': "Billy", 'last_name': "Bob",
+                        'phone_number': '1111111111', 'address': "Nowhere",
+                        'emergency_contact_phone_number': '33333y3333',
+                        'emergency_contact_name': 'No body'}
+        request.user = TestPatient()
+
+        update_patient_profile(request)
+
+        self.assertTrue(Patient.objects.get(id=2).first_name == "Patient",
+                        "Patient info updated with bad form data (emergency contact phone number)")
+
+
+class DoctorRegistrationTest(TestCase):
+    # good registration form data for use in some tests
+    Doctor_registration_data = {'first_name': 'Doctor', 'last_name': 'Doctor', 'email': 'DoctorDoctor@gmail.com',
+                                'password': 'Konichiwa1', 'hospitals': [89, 45, 90]}
+
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=89)  # sets up a fake hospital
+        Hospital.objects.create(hospital_name="Hospital 2", id=45)
+        Hospital.objects.create(hospital_name="Hospital 3", id=90)
+
+    def test_DoctorCreationsForm_create(self):
+        form = DoctorCreationForm(data=self.Doctor_registration_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_doctor_first_name(self):
+        doctor_registration_data_invalid_firstname = {'first_name': '<Doctor>', 'last_name': 'Doctor',
+                                                      'email': 'DoctorDoctor@gmail.com',
+                                                      'password': 'Konichiwa1', 'hospitals': [89, 45, 90]}
+        form = DoctorCreationForm(data=doctor_registration_data_invalid_firstname)
+        self.assertFalse(form.is_valid(), "invalid first name entered")
+
+    def test_doctor_last_name(self):
+        doctor_registration_data_invalid_lastname = {'first_name': 'Doctor', 'last_name': '<Doctor>',
+                                                     'email': 'DoctorDoctor@gmail.com',
+                                                     'password': 'Konichiwa1', 'hospitals': [89, 45, 90]}
+        form = DoctorCreationForm(data=doctor_registration_data_invalid_lastname)
+        self.assertFalse(form.is_valid(), "invalid last name entered")
+
+    def test_doctor_email(self):
+        doctor_registration_data_invalid_email = {'first_name': '<Doctor>', 'last_name': 'Doctor',
+                                                  'email': 'DoctorDoctorgmail.com',
+                                                  'password': 'Konichiwa1', 'hospitals': [89, 45, 90]}
+        form = DoctorCreationForm(data=doctor_registration_data_invalid_email)
+        self.assertFalse(form.is_valid(), "invalid email entered")
+
+
+"""
+    def test_doctor_registration_success(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.Doctor_registration_data
+        request.FILES = None
+        request.META = {}
+        request.user = TestAdmin()
+        doctor_creation(request=request)
+        os.remove('logs/admins/admin@admin.test_activity_log.txt')  # removes filthy activity log byproduct
+        self.assertTrue(Doctor.objects.filter(username="DoctorDoctor@gmail.com").exists())
+
+    def test_doctor_hospitals_set(self):
+        request = RequestFactory()
+        request.method = 'POST'
+       # request.POST.getlist = TestPostGetlistDocCreation.getlist('hospitals')
+        request.POST = {'first_name': 'Doctor', 'last_name': 'Doctor', 'email': 'DoctorDoctor@gmail.com',
+                        'password': 'Konichiwa1',
+                        'hospitals': [89, 45, 90]}
+        request.post(self, path='accounts/doctor_creation', data=request.POST)
+        request.FILES = None
+        request.META = {}
+        request.user = TestAdmin()
+       # doctor_creation(request=request)
+
+        self.assertTrue(Doctor.objects.filter(username="DoctorDoctor@gmail.com").exists(), "Doctor destroyed during creation!")
+        doctor = Doctor.objects.get(username="DoctorDoctor@gmail.com")
+
+        self.assertTrue(Hospital.objects.get(id=89) in doctor.hospitals.all(),
+                        "First hospital not set in doctor creation")
+        self.assertTrue(Hospital.objects.get(id=45) in doctor.hospitals.all(),
+                        "Second hospital not set in doctor creation")
+        self.assertTrue(Hospital.objects.get(id=90) in doctor.hospitals.all(),
+                        "Third hospital not set in doctor creation")
+
+    def test_doctor_registration_email_used(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.Doctor_registration_data
+        request.FILES = None
+        request.META = {}
+        request.user = TestAdmin()
+        doctor_creation(request=request)  # creates 2 users with email/username who@where.com in test database
+        doctor_creation(request=request)
+        os.remove('logs/admins/admin@admin.test_activity_log.txt')  # removes filthy activity log byproduct
+        self.assertFalse(Doctor.objects.filter(id=2).exists())  # if a second user exists in the test database,
+        # the test fails
+"""
+
+
+class NurseRegistrationTest(TestCase):
+    # good registration form data for use in some tests
+    Nurse_registration_data = {'first_name': 'Nurse', 'last_name': 'Joy',
+                               'password': 'Konichiwa1', 'working_hospital': 89, 'email': 'NurseJoy@gmail.com'}
+
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=89)  # sets up a fake hospital
+
+    def test_NurseCreation_form_create(self):
+        form = NurseCreationForm(data=self.Nurse_registration_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_nurse_first_name(self):
+        nurse_registration_data_invalid_firstname = {'first_name': '<Nurse>', 'last_name': 'Joy',
+                                                     'password': 'Konichiwa1', 'working_hospital': 89,
+                                                     'email': 'NurseJoy@gmail.com'}
+
+        form = NurseCreationForm(data=nurse_registration_data_invalid_firstname)
+        self.assertFalse(form.is_valid(), "invalid first name entered")
+
+    def test_nurse_last_name(self):
+        nurse_registration_data_invalid_lastname = {'first_name': 'Nurse', 'last_name': 'Joy>>><<<<',
+                                                    'password': 'Konichiwa1', 'working_hospital': 89,
+                                                    'email': 'NurseJoy@gmail.com'}
+
+        form = NurseCreationForm(data=nurse_registration_data_invalid_lastname)
+        self.assertFalse(form.is_valid(), "invalid last name entered")
+
+    def test_nurse_email(self):
+        nurse_registration_data_invalid_email = {'first_name': 'Nurse', 'last_name': 'Joy',
+                                                 'password': 'Konichiwa1', 'working_hospital': 89,
+                                                 'email': 'NurseJoygmail.com'}
+        form = NurseCreationForm(data=nurse_registration_data_invalid_email)
+        self.assertFalse(form.is_valid(), "invalid email entered")
+
+    def test_Nurse_registration_success(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.Nurse_registration_data
+        request.FILES = None
+        request.META = {}
+        request.user = TestAdmin()
+        nurse_creation(request=request)
+        os.remove('logs/admins/admin@admin.test_activity_log.txt')  # removes filthy activity log byproduct
+        self.assertTrue(Nurse.objects.filter(username="NurseJoy@gmail.com").exists())
+
+    def test_nurse_registration_email_used(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.Nurse_registration_data
+        request.FILES = None
+        request.META = {}
+        request.user = TestAdmin()
+        nurse_creation(request=request)  # creates 2 users with email/username who@where.com in test database
+        nurse_creation(request=request)
+        os.remove('logs/admins/admin@admin.test_activity_log.txt')  # removes filthy activity log byproduct
+        self.assertFalse(Nurse.objects.filter(id=2).exists())  # if a second user exists in the test database,
+        # the test fails
+
+
+class AdminCreationTest(TestCase):
+    # good registration form data for use in some tests
+    Admin_Creation_data = {'email': 'admin@gmail.com', 'password': 'admin123'}
+
+    def test_AdminCreationForm_create(self):
+        form = AdminCreationForm(data=self.Admin_Creation_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_Admin_Creation_success(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.Admin_Creation_data
+        request.FILES = None
+        request.META = {}
+        request.user = TestAdmin()
+        admin_genesis(request=request)
+        os.remove('logs/admins/admin@admin.test_activity_log.txt')  # removes filthy activity log byproduct
+        self.assertTrue(User.objects.filter(username="admin@gmail.com").exists())
+
+    def test_Admin_Creation_email_used(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.Admin_Creation_data
+        request.FILES = None
+        request.META = {}
+        request.user = TestAdmin()
+        admin_genesis(request=request)  # creates 2 users with email/username who@where.com in test database
+        admin_genesis(request=request)
+        # os.remove('logs/admins/admin@admin.test_activity_log.txt')  # removes filthy activity log byproduct
+        self.assertFalse(User.objects.filter(id=2).exists())  # if a second user exists in the test database,
+        # the test fails
+
+
+class PrescriptionCreationTest(TestCase):
+    # good registration form data for use in some tests
+    prescription_Creation_data = {'prescription_name': 'flapadoop',}
+
+    def test_prescriptionForm_create(self):
+        form = PrescriptionForm(data=self.prescription_Creation_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_PrescriptionCreation_success(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.prescription_Creation_data
+        request.FILES = None
+        request.user = TestAdmin()
+        make_new_prescription(request=request)
+        # os.remove('logs/admins/admin@admin.test_activity_log.txt')  # removes filthy activity log byproduct
+        self.assertTrue(Prescription.objects.filter(prescription_name="flapadoop").exists())
+
+
+class AddPrescriptionToPatientTest(TestCase):
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=1)
+        Prescription.objects.create(prescription_name="Test", id=1)
+        Patient.objects.create(first_name="Patient", last_name="Patient", username="patient@patient.test", id=2,
+                               main_hospital=Hospital.objects.get(id=1))
+
+        doctor = Doctor.objects.create(first_name="Doctor", last_name="Doctor", username="doctor@doctor.test", id=1)
+        doctor.hospitals = [Hospital.objects.get(id=1), ]
+
+    def test_form_validity(self):
+        form = AddPatientPrescriptionForm(data={'patient': 2, 'prescription': '1'})
+        self.assertTrue(form.is_valid(), "Add prescription to patient form not valid!")
+
+    def test_add_prescription_to_patient_by_doctor(self):
+        request = Client()
+        request.method = "POST"
+        request.POST = PostGetPrescription
+        request.user = TestDoctor()
+        add_prescription_to_patient(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed by doctor prescribing drug")
+        patient = Patient.objects.get(id=2)
+        self.assertTrue(patient.prescriptions.all()[0].prescription_name == "Test",
+                        "Prescription not added to patient successfully by doctor")
+
+    def test_add_prescription_to_patient_by_nurse(self):
+        request = Client()
+        request.method = "POST"
+        request.POST = PostGetPrescription
+        request.user = TestNurse()
+        add_prescription_to_patient(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed by nurse prescribing drug")
+        patient = Patient.objects.get(id=2)
+        self.assertFalse(patient.prescriptions.all().exists(),
+                         "Prescription added to patient successfully by nurse")
+
+    def test_add_prescription_to_patient_by_admin(self):
+        request = Client()
+        request.method = "POST"
+        request.POST = PostGetPrescription
+        request.user = TestAdmin()
+        add_prescription_to_patient(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed by admin prescribing drug")
+        patient = Patient.objects.get(id=2)
+        self.assertFalse(patient.prescriptions.all().exists(),
+                         "Prescription added to patient successfully by admin")
+
+    def test_add_prescription_to_patient_by_patient(self):
+        request = Client()
+        request.method = "POST"
+        request.POST = PostGetPrescription
+        request.user = TestPatient()
+        add_prescription_to_patient(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed by patient prescribing drug")
+        patient = Patient.objects.get(id=2)
+        self.assertFalse(patient.prescriptions.all().exists(),
+                         "Prescription added to patient successfully by patient")
+
+    def test_add_prescription_to_patient_by_anon(self):
+        request = Client()
+        request.method = "POST"
+        request.POST = PostGetPrescription
+        request.user = TestRegistrant()
+        add_prescription_to_patient(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed by anonymous user prescribing drug")
+        patient = Patient.objects.get(id=2)
+        self.assertFalse(patient.prescriptions.all().exists(),
+                         "Prescription added to patient successfully by anonymous user")
+
+
+class HospitalCreationTest(TestCase):
+    # good hospital form data for use in some tests
+    Hospital_Creation_data = {'hospital_name': 'generalhospital',}
+
+    def test_hospitalForm_create(self):
+        form = HospitalCreationForm(data=self.Hospital_Creation_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_HospitalCreation_success(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.Hospital_Creation_data
+        request.FILES = None
+        request.user = TestAdmin()
+        hospital_creation(request=request)
+        os.remove('logs/admins/admin@admin.test_activity_log.txt')  # removes filthy activity log byproduct
+        self.assertTrue(Hospital.objects.filter(hospital_name="generalhospital").exists())
+
+
+class TestTest(TestCase):
+    Test_data = {'patient': 2, 'is_released': True,
+                 'description': "TESTING..."}  # 'results': "logs\hospitals\Rochester_Area_Hospital_activity_log.txt"}
+
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=0)
+        doctor = Doctor.objects.create(first_name="Doctor", last_name="Doctor", username="doctor@doctor.test", id=1)
+        doctor.hospitals = [Hospital.objects.get(id=0), ]
+        Patient.objects.create(first_name="Patient", last_name="Patient", username="patient@patient.test", id=2)
+        Patient.objects.create(first_name="Patient2", last_name="Patient2", username="patient2@patient.test", id=3)
+
+    def test_valid_test_creation(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.Test_data
+        request.FILES = {'results': File(open("logs\hospitals\Rochester_Area_Hospital_activity_log.txt"))}
+        request.user = TestDoctor()
+        update_test(request=request)
+        self.assertTrue(Test.objects.filter(id=1).exists(), "Test was not created")
+        test = get_object_or_404(Test, id=1)
+        self.assertTrue(test.description == "TESTING...", "Description not set correctly")
+        self.assertTrue(test.is_released is True, "Test was created un-released")
+        self.assertTrue(test.issuer_id == 1, "Issuer not set correctly")
+
+    def test_test_creation_wrong_user(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.Test_data
+        request.FILES = {'results': File(open("logs\hospitals\Rochester_Area_Hospital_activity_log.txt"))}
+        request.user = TestAdmin()
+        update_test(request=request)
+        self.assertFalse(Test.objects.filter(id=1).exists(), "Test was created as admin")
+
+        request.user = TestNurse()
+        update_test(request=request)
+        self.assertFalse(Test.objects.filter(id=1).exists(), "Test was created as nurse")
+
+    def test_test_update(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.Test_data
+        request.FILES = {'results': File(open("logs\hospitals\Rochester_Area_Hospital_activity_log.txt"))}
+        request.user = TestDoctor()
+        update_test(request=request)  # creates test first
+
+        request.POST = {'patient': 3, 'is_released': False, 'description': "TESTING.."}
+        request.FILES = None
+        update_test(request=request, test_id=1)  # tests updating test
+        self.assertTrue(Test.objects.filter(id=1).exists(), "Test does not exist!")
+        test = get_object_or_404(Test, id=1)
+        self.assertTrue(test.description == "TESTING..", "Description not updated")
+        self.assertTrue(test.is_released is False, "Test's release status not updated")
+        self.assertTrue(test.patient == Patient.objects.get(id=3), "Patient not updated")
+
+    def tearDown(self):  # removes test file upload
+        if os.path.exists('uploads/tests/Rochester_Area_Hospital_activity_log.txt'):
+            os.remove('uploads/tests/Rochester_Area_Hospital_activity_log.txt')
+
+
+class UpdatePatientMedicalInfoTest(TestCase):
+    med_file = {'medical_information': File(open('logs/admins/admin_activity_log.txt'))}
+
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=1)
+        Hospital.objects.create(hospital_name="Hospital 2", id=2)
+        Patient.objects.create(first_name="Patient", last_name="Patient", username="patient@patient.test", id=2,
+                               main_hospital=Hospital.objects.get(id=1))
+        Patient.objects.create(first_name="Patient3", last_name="Patient3", username="patient3@patient.test", id=7,
+                               main_hospital=Hospital.objects.get(id=2))
+        Patient.objects.create(first_name="Patient2", last_name="Patient2", username="patient2@patient.test", id=4,
+                               main_hospital=Hospital.objects.get(id=1),
+                               medical_information=File('designs\loginDesign.png'))
+        doctor = Doctor.objects.create(first_name="Doctor", last_name="Doctor", username="doctor@doctor.test", id=1)
+        doctor.hospitals = [Hospital.objects.get(id=1), ]
+        Nurse.objects.create(first_name="Nurse", last_name="Nurse", username="nurse@nurse.test", id=3,
+                             working_hospital=Hospital.objects.get(id=1))
+
+    def test_form_validity(self):
+        form = UpdateMedForm(files=self.med_file)
+        self.assertTrue(form.is_valid, form.errors)
+
+    def test_upload_med_info_no_previous_as_doctor(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {}
+        request.FILES = self.med_file
+        request.user = TestDoctor()
+
+        update_med_info(request=request, patient_id=2)
+
+        patient = Patient.objects.get(id=2)
+        self.assertTrue(patient.medical_information.name == "patient_uploads/admin_activity_log.txt",
+                        "Patient medical info not uploaded for no previous medical info, user is doctor. file: " +
+                        str(patient.medical_information.name))
+
+    def test_upload_med_info_with_previous_as_doctor(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {}
+        request.FILES = self.med_file
+        request.user = TestDoctor()
+
+        update_med_info(request=request, patient_id=4)
+
+        patient = Patient.objects.get(id=4)
+        self.assertTrue(patient.medical_information.name == "patient_uploads/admin_activity_log.txt",
+                        "Patient medical info not uploaded with previous medical info, user is doctor. file: " +
+                        str(patient.medical_information.name))
+
+    def test_upload_med_info_non_working_hospital_as_doctor(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {}
+        request.FILES = self.med_file
+        request.user = TestDoctor()
+
+        update_med_info(request=request, patient_id=7)
+
+        patient = Patient.objects.get(id=7)
+        self.assertTrue(patient.medical_information.name == "patient_uploads/admin_activity_log.txt",
+                        "Patient medical info not uploaded for patient at non-working hospital, user is doctor. file: "
+                        + str(patient.medical_information.name))
+
+    def test_upload_med_info_no_previous_as_nurse(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {}
+        request.FILES = self.med_file
+        request.user = TestNurse()
+
+        update_med_info(request=request, patient_id=2)
+
+        patient = Patient.objects.get(id=2)
+        self.assertTrue(patient.medical_information.name == "patient_uploads/admin_activity_log.txt",
+                        "Patient medical info not uploaded for no previous medical info, user is nurse. file: " +
+                        str(patient.medical_information.name))
+
+    def test_upload_med_info_with_previous_as_nurse(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {}
+        request.FILES = self.med_file
+        request.user = TestNurse()
+
+        update_med_info(request=request, patient_id=4)
+
+        patient = Patient.objects.get(id=4)
+        self.assertTrue(patient.medical_information.name == "patient_uploads/admin_activity_log.txt",
+                        "Patient medical info not uploaded with previous medical info, user is nurse. file: " +
+                        str(patient.medical_information.name))
+
+    def test_upload_med_info_non_working_hospital_as_nurse(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {}
+        request.FILES = self.med_file
+        request.user = TestNurse()
+
+        update_med_info(request=request, patient_id=7)
+
+        patient = Patient.objects.get(id=7)
+        self.assertFalse(patient.medical_information.name == "patient_uploads/admin_activity_log.txt",
+                         "Patient medical info uploaded for non-working hospital, user is nurse. file: " +
+                         str(patient.medical_information.name))
+
+    def test_upload_med_info_as_patient(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {}
+        request.FILES = self.med_file
+        request.user = TestPatient()
+
+        update_med_info(request=request, patient_id=2)
+
+        patient = Patient.objects.get(id=2)
+        self.assertFalse(patient.medical_information.name == "patient_uploads/admin_activity_log.txt",
+                         "Patient medical info uploaded, user is patient. file: " +
+                         str(patient.medical_information.name))
+
+    def test_upload_med_info_as_admin(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {}
+        request.FILES = self.med_file
+        request.user = TestAdmin()
+
+        update_med_info(request=request, patient_id=2)
+
+        patient = Patient.objects.get(id=2)
+        self.assertFalse(patient.medical_information.name == "patient_uploads/admin_activity_log.txt",
+                         "Patient medical info uploaded, user is admin. file: " +
+                         str(patient.medical_information.name))
+
+    def test_upload_med_info_as_anonymous(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {}
+        request.FILES = self.med_file
+        request.user = TestRegistrant()
+
+        update_med_info(request=request, patient_id=2)
+
+        patient = Patient.objects.get(id=2)
+        self.assertFalse(patient.medical_information.name == "patient_uploads/admin_activity_log.txt",
+                         "Patient medical info uploaded, user is anonymous. file: " +
+                         str(patient.medical_information.name))
+
+    def tearDown(self):
+        if os.path.exists('uploads/patient_uploads/admin_activity_log.txt'):
+            os.remove('uploads/patient_uploads/admin_activity_log.txt')
+
+
+class CreateAppointmentTest(TestCase):
+    patient_appointment_post = {'doctor': 1, 'hospital': 1, 'start_date': "2011-11-11 11:11:00",
+                                'end_date': "2011-11-11 12:11", 'description': "TESTING..."}
+    nurse_appointment_post = {'doctor': 1, 'patient': 2, 'start_date': "2011-11-11 11:11",
+                              'end_date': "2011-11-11 12:11", 'description': "TESTING..."}
+    doctor_appointment_post = {'patient': 2, 'hospital': 1, 'start_date': "2011-11-11 11:11",
+                               'end_date': "2011-11-11 12:11", 'description': "TESTING..."}
+
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=1)
+        Hospital.objects.create(hospital_name="Hospital 2", id=2)
+
+        Patient.objects.create(first_name="Patient", last_name="Patient", username="patient@patient.test", id=2,
+                               main_hospital=Hospital.objects.get(id=1))
+        Patient.objects.create(first_name="Patient2", last_name="Patient2", username="patient2@patient.test", id=300,
+                               main_hospital=Hospital.objects.get(id=1))
+
+        doctor = Doctor.objects.create(first_name="Doctor", last_name="Doctor", username="doctor@doctor.test", id=1)
+        doctor.hospitals = [Hospital.objects.get(id=1), ]
+
+        doctor2 = Doctor.objects.create(first_name="Doctor2", last_name="Doctor2", username="doctor2@doctor.test",
+                                        id=2000)
+        doctor2.hospitals = [Hospital.objects.get(id=1), ]
+
+        Nurse.objects.create(first_name="Nurse", last_name="Nurse", username="nurse@nurse.test", id=3,
+                             working_hospital=Hospital.objects.get(id=1))
+
+    def test_create_appointment_patient(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.patient_appointment_post
+        request.user = TestPatient()
+        create_appointment(request=request)
+
+        self.assertTrue(Appointment.objects.filter(id=1).exists(), "appointment not created as patient")
+        appt = Appointment.objects.get(id=1)
+        self.assertTrue(appt.description == "TESTING...",
+                        "appointment description not set properly for patient appointment creation")
+        self.assertTrue(appt.doctor_id == 1,
+                        "appointment doctor not set properly for patient appointment creation")
+        self.assertTrue(appt.patient_id == request.user.id,
+                        "Patient not set correctly for patient creating appointment")
+        self.assertTrue(appt.hospital_id == 1,
+                        "appointment hospital not set properly for patient appointment creation")
+        self.assertTrue(str(appt.start_date)[:16] == "2011-11-11 11:11",
+                        "appointment start date not set properly for patient appointment creation: "
+                        + str(appt.start_date))
+        self.assertTrue(str(appt.end_date)[:16] == "2011-11-11 12:11",
+                        "appointment end date not set properly for patient appointment creation" + str(appt.end_date))
+
+    def test_create_appointment_nurse(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.nurse_appointment_post
+        request.user = TestNurse()
+        create_appointment(request=request)
+
+        self.assertTrue(Appointment.objects.filter(id=1).exists(), "appointment not created as nurse")
+        appt = Appointment.objects.get(id=1)
+        self.assertTrue(appt.description == "TESTING...",
+                        "appointment description not set properly for nurse appointment creation")
+        self.assertTrue(appt.doctor_id == 1,
+                        "appointment doctor not set properly for nurse appointment creation")
+        self.assertTrue(appt.patient_id == 2,
+                        "appointment patient not set properly for nurse appointment creation")
+        self.assertTrue(appt.hospital_id == 1,
+                        "appointment hospital not set properly for nurse appointment creation")
+        self.assertTrue(str(appt.start_date)[:16] == "2011-11-11 11:11",
+                        "appointment start date not set properly for nurse appointment creation: " + str(
+                            appt.start_date))
+        self.assertTrue(str(appt.end_date)[:16] == "2011-11-11 12:11",
+                        "appointment end date not set properly for nurse appointment creation: " + str(appt.end_date))
+
+    def test_create_appointment_doctor(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.doctor_appointment_post
+        request.user = TestDoctor()
+        create_appointment(request=request)
+
+        self.assertTrue(Appointment.objects.filter(id=1).exists(), "appointment not created as doctor")
+        appt = Appointment.objects.get(id=1)
+        self.assertTrue(appt.description == "TESTING...",
+                        "appointment description not set properly for doctor appointment creation")
+        self.assertTrue(appt.doctor_id == request.user.id,
+                        "appointment doctor not set properly for doctor appointment creation")
+        self.assertTrue(appt.patient_id == 2,
+                        "appointment patient not set properly for doctor appointment creation")
+        self.assertTrue(appt.hospital_id == 1,
+                        "appointment hospital not set properly for doctor appointment creation")
+        self.assertTrue(str(appt.start_date)[:16] == "2011-11-11 11:11",
+                        "appointment start date not set properly for doctor appointment creation: " + str(
+                            appt.start_date))
+        self.assertTrue(str(appt.end_date)[:16] == "2011-11-11 12:11",
+                        "appointment end date not set properly for doctor appointment creation: " + str(appt.end_date))
+
+    def test_create_appointment_admin(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.nurse_appointment_post
+        request.user = TestAdmin()
+        create_appointment(request=request)
+
+        self.assertFalse(Appointment.objects.filter(id=1).exists(), "Appointment created as admin")
+
+    def test_create_appointment_doctor_unavailable(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.doctor_appointment_post
+        request.user = TestDoctor()
+        create_appointment(request=request)
+        request.POST = {'patient': 300, 'hospital': 1, 'start_date': "2011-11-11 11:11",
+                        'end_date': "2011-11-11 12:11", 'description': "TESTING..."}
+        create_appointment(request=request)
+
+        self.assertFalse(Appointment.objects.filter(id=2).exists(), "Appointment created with overlapping doctor times")
+
+    def test_create_appointment_patient_unavailable(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.patient_appointment_post
+        request.user = TestPatient()
+        create_appointment(request=request)
+        request.POST = {'doctor': 2000, 'hospital': 1, 'start_date': "2011-11-11 11:11:00",
+                        'end_date': "2011-11-11 12:11", 'description': "TESTING..."}
+        create_appointment(request=request)
+
+        self.assertFalse(Appointment.objects.filter(id=2).exists(),
+                         "Appointment created with overlapping patient times")
+
+    def test_create_appointment_bad_hospital_for_doctor(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'doctor': 1, 'hospital': 2, 'start_date': "2011-11-11 11:11:00",
+                        'end_date': "2011-11-11 12:11", 'description': "TESTING..."}
+        request.user = TestPatient()
+        create_appointment(request=request)
+
+        self.assertFalse(Appointment.objects.filter(id=2).exists(), "Appointment created with invalid doctor hospital")
+
+
+class UpdateAppointmentTest(TestCase):
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=1)
+        Hospital.objects.create(hospital_name="Hospital 2", id=2)
+
+        Patient.objects.create(first_name="Patient", last_name="Patient", username="patient@patient.test", id=2,
+                               main_hospital=Hospital.objects.get(id=1))
+        Patient.objects.create(first_name="Patient2", last_name="Patient2", username="patient2@patient.test", id=300,
+                               main_hospital=Hospital.objects.get(id=1))
+
+        doctor = Doctor.objects.create(first_name="Doctor", last_name="Doctor", username="doctor@doctor.test", id=1)
+        doctor.hospitals = [Hospital.objects.get(id=1), ]
+
+        doctor2 = Doctor.objects.create(first_name="Doctor2", last_name="Doctor2", username="doctor2@doctor.test",
+                                        id=2000)
+        doctor2.hospitals = [Hospital.objects.get(id=1), ]
+
+        Nurse.objects.create(first_name="Nurse", last_name="Nurse", username="nurse@nurse.test", id=3,
+                             working_hospital=Hospital.objects.get(id=1))
+
+        Appointment.objects.create(doctor=Doctor.objects.get(id=1), patient=Patient.objects.get(id=2), id=1,
+                                   hospital=Hospital.objects.get(id=1), description="TESTING....",
+                                   start_date=datetime.datetime.strptime('2011-11-11 11:11:00',
+                                                                         '%Y-%m-%d %H:%M:%S'),
+                                   end_date=datetime.datetime.strptime('2011-11-11 12:11:00',
+                                                                       '%Y-%m-%d %H:%M:%S'))
+        Appointment.objects.create(doctor=Doctor.objects.get(id=1), patient=Patient.objects.get(id=2), id=0,
+                                   hospital=Hospital.objects.get(id=1), description="TESTING2...",
+                                   start_date=datetime.datetime.strptime('2011-11-13 11:11:00',
+                                                                         '%Y-%m-%d %H:%M:%S'),
+                                   end_date=datetime.datetime.strptime('2011-11-13 12:11:00',
+                                                                       '%Y-%m-%d %H:%M:%S'))
+
+    def test_update_appointment_patient(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'doctor': 2000, 'hospital': 1, 'start_date': "2011-11-12 11:11:00",
+                        'end_date': "2011-11-12 12:11", 'description': "TESTING...!", 'update': ''}
+        request.user = TestPatient()
+        update_appointment(request, pk=1)
+
+        self.assertFalse(Appointment.objects.filter(id=1).exists(), "Old appointment still present")
+        self.assertTrue(Appointment.objects.filter(id=2).exists(), "Updated appointment was destroyed")
+
+        appointment = Appointment.objects.get(id=2)
+        self.assertTrue(appointment.description == "TESTING...!",
+                        "Description not set properly for patient appointment updating")
+        self.assertTrue(str(appointment.end_date)[:16] == "2011-11-12 12:11",
+                        "End date not set properly for patient appointment updating")
+        self.assertTrue(str(appointment.start_date)[:16] == "2011-11-12 11:11",
+                        "Start date not set properly for patient appointment updating")
+        self.assertTrue(appointment.doctor_id == 2000, "Doctor not set properly for patient appointment updating")
+        self.assertTrue(appointment.hospital_id == 1, "Hospital not set properly for patient appointment updating")
+        self.assertTrue(appointment.patient_id == request.user.id,
+                        "Patient not set properly for patient appointment updating")
+
+    def test_update_appointment_doctor(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'patient': 300, 'hospital': 1, 'start_date': "2011-11-12 11:11",
+                        'end_date': "2011-11-12 12:11", 'description': "TESTING...!", 'update': ''}
+        request.user = TestDoctor()
+        update_appointment(request, pk=1)
+
+        self.assertFalse(Appointment.objects.filter(id=1).exists(), "Old appointment still present")
+        self.assertTrue(Appointment.objects.filter(id=2).exists(), "Updated appointment was destroyed")
+
+        appointment = Appointment.objects.get(id=2)
+        self.assertTrue(appointment.description == "TESTING...!",
+                        "Description not set properly for doctor appointment updating")
+        self.assertTrue(str(appointment.end_date)[:16] == "2011-11-12 12:11",
+                        "End date not set properly for doctor appointment updating")
+        self.assertTrue(str(appointment.start_date)[:16] == "2011-11-12 11:11",
+                        "Start date not set properly for doctor appointment updating")
+        self.assertTrue(appointment.doctor_id == request.user.id,
+                        "Doctor not set properly for doctor appointment updating")
+        self.assertTrue(appointment.hospital_id == 1, "Hospital not set properly for doctor appointment updating")
+        self.assertTrue(appointment.patient_id == 300,
+                        "Patient not set properly for doctor appointment updating")
+
+    def test_update_appointment_nurse(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'patient': 300, 'doctor': 2000, 'start_date': "2011-11-12 11:11",
+                        'end_date': "2011-11-12 12:11", 'description': "TESTING...!", 'update': ''}
+        request.user = TestNurse()
+        update_appointment(request, pk=1)
+
+        self.assertFalse(Appointment.objects.filter(id=1).exists(), "Old appointment still present")
+        self.assertTrue(Appointment.objects.filter(id=2).exists(), "Updated appointment was destroyed")
+
+        appointment = Appointment.objects.get(id=2)
+        self.assertTrue(appointment.description == "TESTING...!",
+                        "Description not set properly for nurse appointment updating")
+        self.assertTrue(str(appointment.end_date)[:16] == "2011-11-12 12:11",
+                        "End date not set properly for nurse appointment updating")
+        self.assertTrue(str(appointment.start_date)[:16] == "2011-11-12 11:11",
+                        "Start date not set properly for nurse appointment updating")
+        self.assertTrue(appointment.doctor_id == 2000,
+                        "Doctor not set properly for nurse appointment updating")
+        self.assertTrue(appointment.hospital_id == 1, "Hospital not set properly for nurse appointment updating")
+        self.assertTrue(appointment.patient_id == 300,
+                        "Patient not set properly for nurse appointment updating")
+
+    def test_update_appointment_admin(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'patient': 300, 'doctor': 2000, 'start_date': "2011-11-12 11:11",
+                        'end_date': "2011-11-12 12:11", 'description': "TESTING...!", 'update': ''}
+        request.user = TestAdmin()
+        update_appointment(request, pk=1)
+
+        self.assertTrue(Appointment.objects.filter(id=1).exists(), "Old appointment destroyed as admin")
+        self.assertFalse(Appointment.objects.filter(id=2).exists(), "Appointment updated as admin")
+
+    def test_update_appointment_doctor_unavailable(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'patient': 300, 'hospital': 1, 'start_date': "2011-11-13 11:11",
+                        'end_date': "2011-11-13 12:11", 'description': "TESTING...!", 'update': ''}
+        request.user = TestDoctor()
+        update_appointment(request, pk=1)
+
+        self.assertTrue(Appointment.objects.filter(id=1).exists(), "Old appointment destroyed with invalid form")
+        self.assertFalse(Appointment.objects.filter(id=2).exists(), "Appointment updated with invalid form")
+
+    def test_update_appointment_patient_unavailable(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'doctor': 2000, 'hospital': 1, 'start_date': "2011-11-13 11:11",
+                        'end_date': "2011-11-13 12:11", 'description': "TESTING...!", 'update': ''}
+        request.user = TestPatient()
+        update_appointment(request, pk=1)
+
+        self.assertTrue(Appointment.objects.filter(id=1).exists(), "Old appointment destroyed with invalid form")
+        self.assertFalse(Appointment.objects.filter(id=2).exists(), "Appointment updated with invalid form")
+
+    def test_update_appointment_bad_hospital_for_doctor(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'doctor': 2000, 'hospital': 2, 'start_date': "2011-11-12 11:11",
+                        'end_date': "2011-11-12 12:11", 'description': "TESTING...!", 'update': ''}
+        request.user = TestPatient()
+        update_appointment(request, pk=1)
+
+        self.assertTrue(Appointment.objects.filter(id=1).exists(), "Old appointment destroyed with invalid form")
+        self.assertFalse(Appointment.objects.filter(id=2).exists(), "Appointment updated with invalid form")
+
+
+class DeleteAppointmentTest(TestCase):
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=1)
+
+        Patient.objects.create(first_name="Patient", last_name="Patient", username="patient@patient.test", id=2,
+                               main_hospital=Hospital.objects.get(id=1))
+
+        doctor = Doctor.objects.create(first_name="Doctor", last_name="Doctor", username="doctor@doctor.test", id=1)
+        doctor.hospitals = [Hospital.objects.get(id=1), ]
+
+        Nurse.objects.create(first_name="Nurse", last_name="Nurse", username="nurse@nurse.test", id=3,
+                             working_hospital=Hospital.objects.get(id=1))
+
+        Appointment.objects.create(doctor=Doctor.objects.get(id=1), patient=Patient.objects.get(id=2), id=1,
+                                   hospital=Hospital.objects.get(id=1), description="TESTING....",
+                                   start_date=datetime.datetime.strptime('2011-11-11 11:11:00',
+                                                                         '%Y-%m-%d %H:%M:%S'),
+                                   end_date=datetime.datetime.strptime('2011-11-11 12:11:00',
+                                                                       '%Y-%m-%d %H:%M:%S'))
+
+    def test_patient_appointment_delete(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'doctor': 1, 'hospital': 1, 'start_date': "2011-11-11 11:01",
+                        'end_date': "2011-11-11 12:11", 'description': "TESTING...!", 'delete': ''}
+        request.user = TestPatient()
+
+        update_appointment(request, pk=1)
+
+        self.assertFalse(Appointment.objects.filter(id=1).exists(), "Appointment not deleted for patient")
+
+    def test_doctor_appointment_delete(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'patient': 2, 'hospital': 1, 'start_date': "2011-11-11 11:01",
+                        'end_date': "2011-11-11 12:11", 'description': "TESTING...!", 'delete': ''}
+        request.user = TestDoctor()
+
+        update_appointment(request, pk=1)
+
+        self.assertFalse(Appointment.objects.filter(id=1).exists(), "Appointment not deleted for doctor")
+
+    def test_nurse_appointment_delete(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'patient': 2, 'doctor': 1, 'start_date': "2011-11-11 11:01",
+                        'end_date': "2011-11-11 12:11", 'description': "TESTING...!", 'delete': ''}
+        request.user = TestNurse()
+
+        update_appointment(request, pk=1)
+
+        self.assertTrue(Appointment.objects.filter(id=1).exists(), "Appointment deleted as nurse")
+
+    def test_admin_appointment_delete(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'patient': 2, 'doctor': 1, 'start_date': "2011-11-11 11:01",
+                        'end_date': "2011-11-11 12:11", 'description': "TESTING...!", 'delete': ''}
+        request.user = TestAdmin()
+
+        update_appointment(request, pk=1)
+
+        self.assertTrue(Appointment.objects.filter(id=1).exists(), "Appointment deleted as admin")
+
+
+class PrivateMessagingTest(TestCase):
+    patient_message_data = {'recipient': "patient@patient.test", 'subject': "Message test", 'body': "testing...."}
+
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=1)
+        Patient.objects.create(first_name="Patient", last_name="Patient", username="patient@patient.test",
+                               email="patient@patient.test", id=2, main_hospital=Hospital.objects.get(id=1))
+
+    def test_form_validity(self):
+        form = MessageForm(data=self.patient_message_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_send_message_to_self(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.patient_message_data
+        request.user = TestPatient()
+
+        private_messaging(request)
+
+        self.assertTrue(os.path.exists('messages/patient@patient.test'), "Message directory not created")
+        self.assertTrue(os.path.exists('messages/patient@patient.test/Message test'), "Message file not created")
+        file = open('messages/patient@patient.test/Message test', 'r')
+        self.assertTrue(file.read() == "Patient Patient\ntesting....", "Message file contents not written correctly")
+        file.close()
+
+    def test_send_message_bad_recipient(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'recipient': "patient@pat.test", 'subject': "Message test", 'body': "testing...."}
+        request.user = TestPatient()
+
+        private_messaging(request)
+
+        self.assertFalse(os.path.exists('messages/patient@pat.test'),
+                         "Message directory created with invalid recipient")
+
+    def test_send_message_bad_subject(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'recipient': "patient@patient.test", 'subject': "<<<<>>>>!;", 'body': "testing...."}
+        request.user = TestPatient()
+
+        private_messaging(request)
+
+        self.assertFalse(os.path.exists('messages/patient@patient.test/<<<<>>>>!;'),
+                         "Message created with invalid subject")
+
+    def test_send_message_bad_body(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'recipient': "patient@patient.test", 'subject': "Message test", 'body': "testing..<><><;.."}
+        request.user = TestPatient()
+
+        private_messaging(request)
+
+        self.assertFalse(os.path.exists('messages/patient@patient.test/Message test'),
+                         "Message created with invalid body")
+
+    def test_send_message_duplicate_subject(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.patient_message_data
+        request.user = TestPatient()
+
+        private_messaging(request)
+        private_messaging(request)
+
+        file = open('messages/patient@patient.test/Message test', 'r')
+        self.assertFalse(file.read() == "Patient Patient\ntesting...testing...", "Wrote twice to original file")
+        self.assertTrue(os.path.exists('messages/patient@patient.test/Message test' +
+                                       str(timezone.now())[:19].replace(':', ' ')),
+                        'New unique message file not created')
+        file.close()
+
+    def tearDown(self):  # deletes files made during test
+        if os.path.exists('messages/patient@patient.test'):
+            shutil.rmtree('messages/patient@patient.test')
+
+
+class AdmitPatientTest(TestCase):
+    doctor_admit_form_data = {'patient': 2, 'hospital': 1, 'reason': "Testing"}
+    nurse_admit_form_data = {'patient': 2, 'reason': "Testing"}
+
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=1, number_patients=1)
+        Hospital.objects.create(hospital_name="Hospital 2", id=2)
+
+        Patient.objects.create(first_name="Patient", last_name="Patient", username="patient@patient.test", id=2,
+                               main_hospital=Hospital.objects.get(id=2))
+
+        Nurse.objects.create(first_name="Nurse", last_name="Nurse", username="nurse@nurse.test", working_hospital_id=1)
+
+        doctor = Doctor.objects.create(first_name="Doctor", last_name="Doctor", username="doctor@doctor.test", id=1)
+        doctor.hospitals = [Hospital.objects.get(id=1), ]
+
+    def test_patient_admit_as_doctor(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.doctor_admit_form_data
+        request.user = TestDoctor()
+
+        admit_patient(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed during admit process!")
+        patient = Patient.objects.get(id=2)
+        self.assertTrue(patient.current_hospital_id == 1, "Patient current hospital id not set during admit by doctor")
+        self.assertTrue(patient.checked_in_hospital == Hospital.objects.get(id=1),
+                        'patient checked_in_hospital not set during admit by doctor')
+        self.assertTrue(patient.is_checked_in is True, "Patient is_checked_in not set during admit by doctor")
+
+    def test_patient_admit_as_nurse(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.nurse_admit_form_data
+        request.user = TestNurse()
+
+        admit_patient(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed during admit process!")
+        patient = Patient.objects.get(id=2)
+        self.assertTrue(patient.current_hospital_id == 1, "Patient current hospital id not set during admit by nurse")
+        self.assertTrue(patient.checked_in_hospital == Hospital.objects.get(id=1),
+                        'patient checked_in_hospital not set during admit by nurse')
+        self.assertTrue(patient.is_checked_in is True, "Patient is_checked_in not set during admit by nurse")
+
+    def test_patient_admit_as_admin(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.doctor_admit_form_data
+        request.user = TestAdmin()
+
+        admit_patient(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed during admit process!")
+        patient = Patient.objects.get(id=2)
+        self.assertFalse(patient.current_hospital_id == 1, "Patient current hospital id set during admit by admin")
+
+    def test_patient_admit_as_doctor_bad_hospital(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = {'patient': 2, 'hospital': 2, 'reason': "Testing"}
+        request.user = TestDoctor()
+
+        admit_patient(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed during admit process!")
+        patient = Patient.objects.get(id=2)
+        self.assertFalse(patient.current_hospital_id == 2,
+                         "Patient current hospital id set during admit by doctor, bad hospital")
+
+
+class DischargePatientTest(TestCase):
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=1, number_patients=1)
+        Hospital.objects.create(hospital_name="Hospital 2", id=2)
+
+        Patient.objects.create(first_name="Patient", last_name="Patient", username="patient@patient.test", id=2,
+                               main_hospital=Hospital.objects.get(id=1), checked_in_hospital=Hospital.objects.get(id=1),
+                               current_hospital_id=1, number_hospital_visits=1, is_checked_in=True)
+
+        doctor = Doctor.objects.create(first_name="Doctor", last_name="Doctor", username="doctor@doctor.test", id=1)
+        doctor.hospitals = [Hospital.objects.get(id=1), ]
+
+        doctor2 = Doctor.objects.create(first_name="Doctor2", last_name="Doctor2", username="doctor2@doctor.test",
+                                        id=81)
+        doctor2.hospitals = [Hospital.objects.get(id=2), ]
+
+    def test_discharge_as_doctor(self):
+        request = Client()
+        request.user = TestDoctor()
+        patient_discharge(request, patient_id=2, transfer=False)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient destroyed during discharge process by doctor")
+        patient = Patient.objects.get(id=2)
+        self.assertTrue(patient.current_hospital_id == 0,
+                        "Current hospital id not set to 0 during patient discharge by doctor")
+        self.assertTrue(patient.checked_in_hospital is None,
+                        "Checked in hospital not cleared during patient discharge by doctor")
+        self.assertTrue(patient.is_checked_in is False, "is_checked_in not updated during patient discharge by doctor")
+
+    def test_discharge_as_nurse(self):
+        request = Client()
+        request.user = TestNurse()
+        patient_discharge(request, patient_id=2, transfer=False)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient destroyed during discharge process as nurse")
+        patient = Patient.objects.get(id=2)
+        self.assertFalse(patient.current_hospital_id == 0,
+                         "Current hospital id set to 0 during patient discharge by nurse")
+        self.assertFalse(patient.checked_in_hospital is None,
+                         "Checked in hospital cleared during patient discharge by nurse")
+        self.assertFalse(patient.is_checked_in is False,
+                         "is_checked_in updated during patient discharge by nurse")
+
+    def test_discharge_as_admin_transfer(self):
+        request = Client()
+        request.user = TestAdmin()
+        patient_discharge(request, patient_id=2, transfer=True)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(),
+                        "Patient destroyed during discharge process by admin, transfer")
+        patient = Patient.objects.get(id=2)
+        self.assertTrue(patient.current_hospital_id == 0,
+                        "Current hospital id not set to 0 during patient discharge by admin, transfer")
+        self.assertTrue(patient.checked_in_hospital is None,
+                        "Checked in hospital not cleared during patient discharge by admin, transfer")
+        self.assertTrue(patient.is_checked_in is False,
+                        "is_checked_in not updated during patient discharge by admin, transfer")
+
+    def test_discharge_as_admin_no_transfer(self):
+        request = Client()
+        request.user = TestAdmin()
+        patient_discharge(request, patient_id=2, transfer=False)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(),
+                        "Patient destroyed during discharge process by admin, no transfer")
+        patient = Patient.objects.get(id=2)
+        self.assertFalse(patient.current_hospital_id == 0,
+                         "Current hospital id set to 0 during patient discharge by admin, no transfer")
+        self.assertFalse(patient.checked_in_hospital is None,
+                         "Checked in hospital cleared during patient discharge by admin, no transfer")
+        self.assertFalse(patient.is_checked_in is False,
+                         "is_checked_in updated during patient discharge by admin, no transfer")
+
+
+class PatientTransferTest(TestCase):
+    full_transfer_data = {'hospital': 1, 'patient': "patient@patient.test", 'reason': "Testing2"}
+    transfer_data = {'hospital': 1, 'reason': "Testing"}
+
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=1, number_patients=1)
+        Hospital.objects.create(hospital_name="Hospital 2", id=2, number_patients=1)
+
+        Patient.objects.create(first_name="Patient", last_name="Patient", username="patient@patient.test", id=2,
+                               main_hospital=Hospital.objects.get(id=1), checked_in_hospital=Hospital.objects.get(id=2),
+                               current_hospital_id=2, number_hospital_visits=1, is_checked_in=True)
+
+        doctor = Doctor.objects.create(first_name="Doctor", last_name="Doctor", username="doctor@doctor.test", id=1)
+        doctor.hospitals = [Hospital.objects.get(id=1), ]
+
+        doctor2 = Doctor.objects.create(first_name="Doctor2", last_name="Doctor2", username="doctor2@doctor.test",
+                                        id=81)
+        doctor2.hospitals = [Hospital.objects.get(id=2), ]
+
+    def test_full_form_validity(self):
+        form = DoctorTransferPatientForm(data=self.full_transfer_data, doctor=None, patient_id=2)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_partial_form_validity(self):
+        form = DoctorTransferPatientForm(data=self.transfer_data, doctor=None, patient_id=2)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_transfer_doctor(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.transfer_data
+        request.user = TestDoctor(id=1)
+        transfer_patient(request, patient_id=2)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed in transfer process!")
+        patient = Patient.objects.get(id=2)
+        self.assertTrue(patient.current_hospital_id == 1,
+                        "Patient not transferred correctly to new hospital by doctor")
+        self.assertTrue(patient.checked_in_hospital == Hospital.objects.get(id=1))
+
+    def test_transfer_doctor_full_form(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.full_transfer_data
+        request.user = TestDoctor()
+        transfer_patient(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed in transfer process!")
+        patient = Patient.objects.get(id=2)
+        self.assertTrue(patient.current_hospital_id == 1,
+                        "Patient not transferred correctly to new hospital by doctor")
+        self.assertTrue(patient.checked_in_hospital == Hospital.objects.get(id=1))
+
+    def test_transfer_doctor_does_not_work_at_transfer_hospital(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.full_transfer_data
+        request.user = TestDoctor(id=81)
+        transfer_patient(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed in transfer process!")
+        patient = Patient.objects.get(id=2)
+        self.assertFalse(patient.current_hospital_id == 1,
+                         "Patient not transferred correctly to new hospital by doctor with wrong working hospitals")
+        self.assertFalse(patient.checked_in_hospital == Hospital.objects.get(id=1))
+
+    def test_transfer_admin(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.transfer_data
+        request.user = TestAdmin()
+        transfer_patient(request, patient_id=2)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed in transfer process!")
+        patient = Patient.objects.get(id=2)
+        self.assertTrue(patient.current_hospital_id == 1,
+                        "Patient not transferred correctly to new hospital by admin")
+        self.assertTrue(patient.checked_in_hospital == Hospital.objects.get(id=1))
+
+    def test_transfer_admin_full_form(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.full_transfer_data
+        request.user = TestAdmin()
+        transfer_patient(request)
+
+        self.assertTrue(Patient.objects.filter(id=2).exists(), "Patient was destroyed in transfer process!")
+        patient = Patient.objects.get(id=2)
+        self.assertTrue(patient.current_hospital_id == 1,
+                        "Patient not transferred correctly to new hospital by admin")
+        self.assertTrue(patient.checked_in_hospital == Hospital.objects.get(id=1))

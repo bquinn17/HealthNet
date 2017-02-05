@@ -1,0 +1,57 @@
+"""HealthNet URL Configuration
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/1.10/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  url(r'^$', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  url(r'^$', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.conf.urls import url, include
+    2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
+"""
+from django.conf.urls import url, include
+from django.contrib import admin
+
+from health import views
+from health.views import *
+login_forbidden = user_passes_test(lambda u: u.is_anonymous(), '/')
+
+urlpatterns = [
+    url(r'^admin/', include(admin.site.urls)),
+
+    # User auth urls
+    url(r'^accounts/register/$', views.patient_registration, name='patient_registration'),
+    url(r'^accounts/login/$', views.login),
+    url(r'^accounts/login/$', login_forbidden(login)),
+    url(r'^accounts/auth$', views.auth_view),
+    url(r'^accounts/logout/$', views.logout),
+    url(r'^accounts/loggedin/$', views.loggedin),
+    # url(r'^accounts/calendar/$', login_required(views.calendar)),
+    url(r'^accounts/calendar/$', views.calendar),
+    url(r'^accounts/invalid/$', views.invalid_login),
+    url(r'accounts/edit_patient_profile/$', views.update_patient_profile),
+    url(r'accounts/patients/update_med_info/(?P<patient_id>[0-9]+)/$', views.update_med_info),
+    url(r'accounts/update_appointment/(?P<pk>\d+)/$', views.update_appointment),
+    url(r'accounts/view_activity_log/$', views.view_log_by_time),
+    url(r'accounts/patients/$', views.view_patients),
+    url(r'accounts/create_admin/$', views.admin_genesis),
+    url(r'accounts/create_doctor/$', views.doctor_creation),
+    url(r'accounts/create_nurse/$', views.nurse_creation),
+    url(r'accounts/view_messages/$', views.display_messages),
+    url(r'accounts/send_message/$', views.private_messaging),
+    url(r'accounts/create_prescription/$', views.make_new_prescription),
+    url(r'accounts/add_prescription/$', views.add_prescription_to_patient),
+    # url(r'^accounts/loggedin/$', views.loggedin),
+    # url(r'^accounts/invalid/$', views.invalid_login),
+    url(r'appointment/$', views.create_appointment),
+    url(r'^media/(.+)$', views.download_file),
+
+    # default to homepage
+    url(r'^home/$', views.home_page),
+    url(r'^.+', views.error_page),
+    url(r'', views.calendar),
+]

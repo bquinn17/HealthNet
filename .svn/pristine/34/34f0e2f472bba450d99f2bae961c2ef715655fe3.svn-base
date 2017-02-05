@@ -1,0 +1,498 @@
+"""
+Authors: Nahjee Sowah, Andrew Fountain, Chris Cassidy, Chris Cifolelli, Bryan Quinn
+"""
+from django.contrib import auth
+from django.contrib.auth.decorators import *
+from django.shortcuts import *
+from django.template.context_processors import csrf
+from django.utils import timezone
+from django.views.decorators.http import require_POST, require_http_methods
+from django.views.generic import TemplateView
+
+from .forms import *
+from .models import *
+
+
+def home_page(request):
+    """
+    Brings user to website home
+    :param request: user input
+    :return: renders homepage
+    """
+    return render(request, 'health/index.html')
+
+
+def patient_registration(request):
+    """
+    Brings user to registration page and
+    once entered brings user to success or deny page
+    :param request: user input
+    :return: page depending on input
+    """
+    if request.method == "POST":
+        form = PatientRegistrationForm(request.POST, request.FILES)
+        if form.is_valid():
+            patient = form.save(commit=False)
+            if Patient.objects.filter(email=patient.email).exists():
+                return render(request, 'health/invalid_email.html')
+            else:
+                patient.username = patient.email
+                patient.set_password(patient.password)
+                patient.save()
+                log_activity(action='Patient Registered', request=request)
+                return render(request, 'health/registration_success.html')
+        else:
+            return HttpResponse(form.errors)  # todo: replace this with some sort of error template
+    else:
+        form = PatientRegistrationForm()
+        return render(request, 'health/register.html', {'form': form})
+
+        # def update_object_history(request, obj, action, message=None):
+        # """ Update object history if turned on """
+        # if not position_settings.UPDATE_OBJECT_HISTORY:
+        #     return
+
+
+def login(request):
+    """
+    Brings user to login page, but if user is logged in brings them to calender
+    :param request: user request
+    :return: login page or calender
+    """
+    if request.user.is_authenticated():
+        return calendar(request)
+    dictionary = {}
+    dictionary.update(csrf(request))
+    return render_to_response("health/login.html", dictionary)
+
+
+@require_http_methods(["POST"])
+def auth_view(request):
+    """
+    Sees if the the user name and passwords are correct
+    :param request: user request
+    :return: the login page
+    """
+    username = request.POST.get('username', '')  # if no value found in dictionary, return empty string
+    password = request.POST.get('password', '')
+    user = auth.authenticate(username=username, password=password)
+
+    if user is not None:
+        auth.login(request, user)
+        return loggedin(request)  # HttpResponseRedirect('/accounts/loggedin/')
+    else:
+        return invalid_login(request)  # HttpResponseRedirect('/accounts/invalid/')
+
+
+def loggedin(request):
+    """
+    Logs user in
+    :param request: user input
+    :return: logged in page
+    """
+    return render_to_response('health/loggedin.html',
+                              {'full_name': request.user.first_name + " " + request.user.last_name})
+
+
+@require_http_methods(["POST"])
+def invalid_login(request):
+    """
+    Brings user to invalid log in page
+    :param request: user input
+    :return: invalid login page
+    """
+    return render_to_response('health/invalid_login.html')
+
+
+def logout(request):
+    """
+    Brings user to logout page
+    :param request: user input
+    :return: logout page
+    """
+    auth.logout(request)
+    return render_to_response('health/logout.html')
+
+
+@login_required
+def create_appointment(request):
+    """
+    Decides whether an appointment is valid
+    :param request: user input
+    :return: confirmation
+    """
+    if request.method == "POST":
+        form = AppointmentForm(request.POST)
+        if form.is_valid():
+            appointment = form.save(commit=False)
+            if Patient.objects.filter(id=request.user.id).exists():
+                # patients can still view list of all patients, cannot make appointments for others, though
+                # todo: make it so that patients cannot select a patient when creating/updating appointment
+                form.patient = request.user.id
+            appointment.save()
+            log_activity('Appointment created for ' + str(appointment.start_date)[:19] + ' with Dr. ' +
+                         str(get_object_or_404(Doctor, id=request.POST.get('doctor')).last_name) + ' ' + ' at ' +
+                         str(get_object_or_404(Hospital, id=request.POST.get('hospital')).hospital_name), request)
+            return render_to_response('health/appt_created.html')
+        else:
+            return render(request, 'health/appt_invalid.html', {'form': form})
+    else:
+        form = AppointmentForm()
+        return render(request, 'health/create_appointment.html', {'form': form})
+
+
+def update_appointment(request):  # template_name='health/update_patient_profile.html'):
+    patient = get_object_or_404(Patient, id=request.user.id)
+    appointment = request.POST.get('appointment')
+    if request.method == "POST":
+        form = UpdateAppointmentForm(data=request.POST, instance=appointment)
+        if form.is_valid():
+            save_appointment = form.save(commit=False)
+            save_appointment.save()
+            log_activity('Appointment updated for ' + str(appointment.date)[:19] + ' with Dr. ' +
+                         str(get_object_or_404(Doctor, id=request.POST.get('doctor')).last_name) + ' ' + ' at ' +
+                         str(get_object_or_404(Hospital, id=request.POST.get('hospital')).hospital_name), request)
+            return render(request, 'health/appt_updated.html')
+        else:
+            return render(request, 'health/invalid_login.html')  # placeholder
+    else:
+        form = UpdateAppointmentForm(instance=patient)
+        return render(request, 'health/appt_update.html', {'form': form})
+        # Brings user to update patient profile page
+        # :param request: user input
+        # :return: update profile page
+        #
+        # if request.user==Patient:
+        #     patient = get_object_or_404(Patient, id=request.user.id)
+        #     if request.method == "POST":
+        #         form = UpdateAppointmentForm(data=request.POST, instance=patient)
+        #         if form.is_valid():
+        #             savePatient = form.save(commit=False)
+        #             savePatient.save()
+        #             update_object_history(request, patient, 'changed', message="Profile info updated")
+        #             return render(request, 'health/profile_updated.html')#todo changetemplate
+        #         else:
+        #             return render(request, 'health/invalid_login.html')  # placeholder#todo changetemplate
+        #     else:
+        #         form = UpdateAppointmentForm(instance=patient)
+        #         return render(request, 'health/profile_update.html', {'form': form})#todo changetemplate
+        # elif request.user.is_authenticated:
+        #     doctor = get_object_or_404(Doctor, id=request.user.id)
+        #     if request.method == "POST":
+        #         form = PatientUpdateForm(data=request.POST, instance=doctor)
+        #         if form.is_valid():
+        #             savePatient = form.save(commit=False)
+        #             savePatient.save()
+        #             update_object_history(request, doctor, 'changed', message="Profile info updated")
+        #             return render(request, 'health/profile_updated.html')#todo changetemplate
+        #         else:
+        #             return render(request, 'health/invalid_login.html')  # placeholder#todo changetemplate
+        #     else:
+        #         form = PatientUpdateForm(instance=doctor)
+        #         return render(request, 'health/profile_update.html', {'form': form})#todo changetemplate
+        #
+        #
+
+
+def delete_appointment(request, appointment_id):
+    """
+    delete appointment
+    :param request: user input
+    :param appointment_id: what appoitment it is
+    :return: the calender page
+    """
+    a = get_object_or_404(Appointment, pk=appointment_id)
+    a.delete()
+    return render_to_response('health/delete_appointment.html')
+
+
+@login_required
+def calendar(request):
+    """
+    Builds calender page for specific user
+    :param request: user input
+    :return: calender
+    """
+    template = loader.get_template('health/calendar.html')
+
+    is_nurse = False
+
+    appointment_list = Appointment.objects.filter(patient=request.user.id)
+
+    context = {
+        'isLoggedIn': request.user.is_authenticated,
+        'isNurse': is_nurse,
+        'appointment_list': appointment_list,
+    }
+
+    return HttpResponse(template.render(context, request))
+
+
+def error_page(request):
+    """
+    brings up error 404 page if error
+    :param request: user input
+    :return: 404 page
+    """
+    return render_to_response('health/notFound.html')
+
+
+def update_patient_profile(request):  # template_name='health/update_patient_profile.html'):
+    """
+    Brings user to update patient profile page
+    :param request: user input
+    :return: update profile page
+    """
+    #    file = open('userupdatelog.txt', 'a')   #text file for activity log storage
+    patient = get_object_or_404(Patient, id=request.user.id)
+    if request.method == "POST":
+        form = PatientUpdateForm(data=request.POST, instance=patient)
+        if form.is_valid():
+            save_patient = form.save(commit=False)
+            save_patient.save()
+            log_activity(action='Profile information updated', request=request)
+
+            # LogEntry.objects.log_action(
+            #     user_id=request.user.pk,
+            #     object_id=patient.pk,     #aborted logging plan
+            #     content_type_id=1,
+            #     object_repr='patient',
+            #     action_flag= ADDITION,
+            #     change_message="Profile information updated",
+            # )
+            return render(request, 'health/profile_updated.html')
+        else:
+            return render(request, 'health/invalid_login.html')  # placeholder
+    else:
+        form = PatientUpdateForm(instance=patient)
+        return render(request, 'health/profile_update.html', {'form': form})
+
+
+def update_med_info(request):
+    patient = get_object_or_404(Patient, id=request.user.id)
+    if request.method == 'POST':
+        form = PatientUpdateForm(data=request.POST, instance=patient)
+        if form.is_valid():
+            (form.save(commit=False)).save()
+            log_activity(action='Patient medical information updated', request=request)
+            return render(request, 'health/med_updated.html')  # Will change
+        else:
+            return render(request, 'health/invalid_login.html')  # placeholder
+    else:
+        form = PatientUpdateForm(instance=patient)
+        return render(request, 'health/update_med.html')
+
+
+def log_activity(action, request):
+    # writes activity log for a user. form and new are for recording patient registration.
+    # This function wont work if multiple people go to log their activity at the exact same time
+
+    # all this jazz before the while loop determines which files to write to and with what information
+    file_list = []  # stores log text file names
+    if request.user.is_authenticated():  # if user is logged in
+        if Patient.objects.filter(
+                username=request.user.username).exists():  # if/elif statements check if user is either
+            # a doctor, nurse, patient, or admin
+            user = get_object_or_404(Patient, username=request.user.username)
+            actor = 'Patient'
+            file_list.append('logs/patients/' + str(user.username) + '_' + 'activity_log.txt')  # adds file name to list
+
+        elif Nurse.objects.filter(username=request.user.username).exists():
+            user = get_object_or_404(Nurse, username=request.user.username)
+            actor = 'Nurse'
+            file_list.append('logs/nurses/' + str(user.username) + '_' + 'activity_log.txt')
+
+        elif Doctor.objects.filter(username=request.user.username).exists():
+            user = get_object_or_404(Doctor, username=request.user.username)
+            actor = 'Doctor'
+            file_list.append('logs/doctors/' + str(user.username) + '_' + 'activity_log.txt')
+
+        else:
+            return HttpResponse("Admins don't get to log activity yet")
+
+        username = user.username
+        hospital_name = user.main_hospital.hospital_name
+        file_list.append('logs/hospitals/' + str(hospital_name).replace(' ', '_') + '_' + 'activity_log.txt')
+
+    else:  # only for when patient is registering
+        username = request.POST.get('email')
+        file_list.append('logs/patients/' + str(username) + '_' + 'activity_log.txt')
+
+        hospital_name = get_object_or_404(Hospital, id=request.POST.get('main_hospital')).hospital_name
+        file_list.append('logs/hospitals/' + str(hospital_name).replace(' ', '_') + '_' + 'activity_log.txt')
+        actor = 'Patient'
+
+    i = 0
+    while i < len(file_list):  # writes log in each file whose name is specified in file_list
+        file = open(file_list[i], 'a')
+        file.write(str(timezone.now())[:19])
+        # appends truncated date. We don't need fractions of a second or time offset to be recorded, times in UTC
+        file.write('\t\t' + actor + ' username:\t' + '{0:<50}'.format(str(username)))  # purty even spacing
+        file.write('\t\tAction: ' + action + '\n')
+        file.close()
+        i += 1
+
+
+# this function is mostly redundant. Would return all logs for given username
+def view_log_activity(request, username='arf8856@rit.edu',
+                      hospital=None):  # can view either hospital log or user log, not both
+    if request.user.is_staff:  # can only view log activity as an admin (staff)
+        if username is not None:
+            if Patient.objects.filter(username=username).exists():
+                file = open('logs/patients/' + str(username) + '_' + 'activity_log.txt', 'r')
+                return HttpResponse(content=file,
+                                    content_type='text/plain')  # returns contents of text file as http response
+            else:  # todo: change HttpResponses to template renders
+                return HttpResponse('Patient not found!')
+    else:
+        render_to_response('health/notFound.html')
+
+
+def view_log_by_time(request):
+    # can either search by username or by hospital, not both
+    #   time is taken as a string, time 1 being starting date/time
+    #   and time 2 being end date/time. In same format as str(django's timezone.now output)
+    def sdi(time='2016-01-01 00:00:00'):
+        # string date to integer function, for converting string times as found in function below.
+        # returns time in seconds since 2000
+        # substring for each part of the date given
+        year = int(time[2:4])
+        month = int(time[5:7])
+        day = int(time[8:10])
+        hour = int(time[11:13])
+        minute = int(time[14:16])
+        sec = int(time[17:19])
+
+        def month_dict(m, y):  # returns number of seconds in each month
+            if (y % 4) == 0 and y != 0:  # leap years don't happen on the turn of a century
+                return {  # returns number of seconds in each month if a leap year. 86400 is number of seconds per day
+                    1: (31 * 86400), 2: (29 * 86400), 3: (31 * 86400), 4: (30 * 86400), 5: (31 * 86400),
+                    6: (30 * 86400),
+                    7: (31 * 86400), 8: (31 * 86400), 9: (30 * 86400), 10: (31 * 86400), 11: (30 * 86400),
+                    12: (31 * 86400)
+                }.get(m, 30)
+
+            else:
+                return {
+                    # returns number of seconds in each month if not a leap year. 86400 is number of seconds per day
+                    1: (31 * 86400), 2: (28 * 86400), 3: (31 * 86400), 4: (30 * 86400), 5: (31 * 86400),
+                    6: (30 * 86400),
+                    7: (31 * 86400), 8: (31 * 86400), 9: (30 * 86400), 10: (31 * 86400), 11: (30 * 86400),
+                    12: (31 * 86400)
+                }.get(m, 30)  # end month_dict
+
+        def s_in_year(y):
+            if (y % 4) == 0:
+                return 31622400  # number of seconds in a leap year
+            else:
+                return 31536000  # number of seconds in a normal year
+
+        year_sum = 0
+        k = 0
+        while k < year:  # doesnt include current year. Not that it matters, really
+            year_sum += s_in_year(k)
+            k += 1
+
+        j = 0
+        month_sum = 0
+        while j < month:
+            month_sum += month_dict(j + 1, year)
+            j += 1
+        # returns number of seconds that the time is from midnight 1/1/2000
+        return year_sum + month_sum + day * 24 + hour * 3600 + minute * 60 + sec
+
+    # some default values to get rid of annoying yellow highlighting by pycharm
+    # only hospital and username defaults are used
+    hospital = None
+    username = ''
+    time1 = '2000-01-01 00:00:00'
+    time2 = '2099-12-12 23:59:59'
+
+    if request.user.is_staff == 0:  # can only access if admin
+        return render_to_response('health/notFound.html')
+
+    open("logs/temp.txt", 'w').close()  # clears temp text file
+
+    if request.method == "GET":  # form to choose user/hospital data
+        form = LogSearchForm()
+        return render(request, 'health/log_search.html', {'form': form})
+    if request.method == "POST":
+        form = LogSearchForm(request.POST)
+        if form.is_valid():
+            username = str(request.POST.get('user_email'))
+            time1 = request.POST.get('start_time')
+            time2 = request.POST.get('end_time')
+        else:
+            return HttpResponse(form.errors)  # todo: replace this with some error template
+
+    if request.POST.get('hospital') != '':
+        hospital = get_object_or_404(Hospital, id=int(request.POST.get('hospital')))
+    if username == '' and hospital is None:
+        return HttpResponse("Please specify either a hospital or a user")
+    if username != '' and request.user.is_staff:  # only admins can do this
+        # if/elif statements check if user is either a doctor, nurse, patient, or admin
+        if Patient.objects.filter(username=username).exists():
+            file = open('logs/patients/' + str(username) + '_' + 'activity_log.txt', 'r')  # log text file to be read
+
+        elif Nurse.objects.filter(username=username).exists():
+            file = open('logs/nurses/' + str(username) + '_' + 'activity_log.txt', 'r')
+
+        elif Doctor.objects.filter(username=username).exists():
+            file = open('logs/doctors/' + str(username) + '_' + 'activity_log.txt', 'r')
+        else:
+            return HttpResponse("Invalid user provided")
+
+    elif hospital is not None:
+        file = open('logs/hospitals/' + str(hospital.hospital_name).replace(' ', '_') + '_' + 'activity_log.txt', 'r')
+
+    temp_file = open("logs/temp.txt", 'a')
+    line_list = file.readlines()  # creates a list whose elements are each line from the log text file
+    s_time1 = sdi(time1)  # time 1 and 2 in seconds since midnight 1/1/2000
+    s_time2 = sdi(time2)
+
+    i = 0
+    while i < len(line_list):
+        if sdi(str(line_list[i])[0:19]) >= s_time1 and sdi(
+                str(line_list[i])[0:19]) <= s_time2:  # compares each log entry time to bounds passed to function
+            temp_file.write(str(line_list[i]))
+        i += 1
+    temp_file = open("logs/temp.txt", 'r')
+    return HttpResponse(content=temp_file, content_type='text/plain')  # works for now. a bit ugly, though
+    #   return_file = temp_file.readlines()   #templates are evil; doesnt render tab characters from text file correctly
+
+
+#    return render(request, 'health/view_log.html', {'return_file': return_file})
+
+def view_patients(request):
+    """
+    :param request: user input
+    :return: patient list page
+    """
+
+    template = loader.get_template('health/patients.html')
+
+    patient_list = []
+
+    if Doctor.objects.filter(id=request.user.id).exists():
+
+        this_user = get_object_or_404(Doctor, id=request.user.id)
+        appointment_list = Appointment.objects.filter(doctor=this_user)
+        for appointment in appointment_list:
+            if appointment.patient not in patient_list:
+                patient_list.append(appointment.patient)
+
+    elif Nurse.objects.filter(id=request.user.id).exists():
+
+        this_user = get_object_or_404(Nurse, id=request.user.id)
+        hospital = this_user.working_hospital
+        patient_list = Patient.objects.filter(main_hospital=hospital)
+
+    elif not Patient.objects.filter(id=request.user.id).exists():
+        # Is an admin
+        patient_list = Patient.objects.all()
+
+    context = {
+        'patients': patient_list,
+    }
+
+    return HttpResponse(template.render(context, request))

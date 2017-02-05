@@ -1,0 +1,14 @@
+{% extends 'health/base.html' %}
+{% block content %}
+
+    <div class = "col-lg-6 col-lg-offset-3">
+
+        <h1>Medical Information Updated!</h1>
+
+        <a href = "/">
+            <button class = "btn-block">Return to Calendar page</button>
+        </a>
+
+    </div>
+
+{% endblock %}

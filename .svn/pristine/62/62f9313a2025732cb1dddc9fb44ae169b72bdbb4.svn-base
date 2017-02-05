@@ -1,0 +1,110 @@
+from django.test import TestCase, Client
+from .models import *
+from .views import *
+from .forms import *
+import os
+
+# Create your tests here.
+
+good_registration_form_data = {'email': "who@where.com", 'first_name': "Billy", 'last_name': "Bob",
+                               'password': "password",
+                               'medical_information': '', 'phone_number': '1111111111', 'insurance_provider': "No one",
+                               'insurance_id': '2222222222', 'address': "Nowhere",
+                               'emergency_contact_phone_number': '3333333333',
+                               'emergency_contact_name': 'No body', "main_hospital": 0}
+
+
+# 'emergency_contact_type': 1}
+
+class TestRegistrant:
+    @staticmethod
+    def is_authenticated():
+        return 0
+
+
+class ActivityLogTest(TestCase):
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=0)  # sets up a fake hospital
+
+    def test_patient_registration_logging(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = good_registration_form_data
+        request.FILES = None
+        request.user = TestRegistrant()
+        patient_registration(request=request)
+        file = open('logs/patients/who@where.com_activity_log.txt','r')
+        self.assertTrue(str(file.read())[101:127] == 'Action: Patient Registered')
+
+
+class RegistrationTest(TestCase):
+    # good registration form data for use in some tests
+    good_form_data = good_registration_form_data
+
+    def setUp(self):
+        Hospital.objects.create(hospital_name="Hospital 1", id=0)  # sets up a fake hospital
+
+    def test_patient_registration_form_create(self):
+        form = PatientRegistrationForm(data=self.good_form_data)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_patient_registration_form_email(self):
+        bad_email_form_data = {  # test if form rejects invalid email
+            'email': "whowhere.com", 'first_name': "Billy", 'last_name': "Bob", 'password': "password",
+            'medical_information': '', 'phone_number': '1111111111', 'insurance_provider': "No one",
+            'insurance_id': '2222222222', 'address': "Nowhere", 'emergency_contact_phone_number': '3333333333',
+            'emergency_contact_name': 'No body', "main_hospital": 0}
+        form = PatientRegistrationForm(data=bad_email_form_data)
+        self.assertFalse(form.is_valid(), "invalid email accepted")
+
+    def test_patient_registration_form_long_phone_number(self):
+        long_phone_number_form_data = {  # test if form rejects phone number too long
+            'email': "who@where.com", 'first_name': "Billy", 'last_name': "Bob", 'password': "password",
+            'medical_information': '', 'phone_number': '1111111111111', 'insurance_provider': "No one",
+            'insurance_id': '2222222222', 'address': "Nowhere", 'emergency_contact_phone_number': '3333333333',
+            'emergency_contact_name': 'No body', "main_hospital": 0}
+        form = PatientRegistrationForm(data=long_phone_number_form_data)
+        self.assertFalse(form.is_valid(), "took phone number that was too long")
+
+    def test_patient_registration_form_create_valid_names(self):
+        bad_names_form_data = {  # test if form rejects numbers in first, last names
+            'email': "who@where.com", 'first_name': "B1123illy", 'last_name': "Bo67566b", 'password': "password",
+            'medical_information': '', 'phone_number': '1111111111', 'insurance_provider': "No one",
+            'insurance_id': '2222222222', 'address': "Nowhere", 'emergency_contact_phone_number': '3333333333',
+            'emergency_contact_name': 'No body', "main_hospital": 0}
+        form = PatientRegistrationForm(data=bad_names_form_data)
+        self.assertFalse(form.is_valid(), "accepted numbers in patient name")
+
+    def test_patient_registration_form_valid_phone_number(self):
+        bad_phone_number_form_data = {  # test if form rejects letters in phone numbers
+            'email': "who@where.com", 'first_name': "Billy", 'last_name': "Bob", 'password': "password",
+            'medical_information': '', 'phone_number': '11111av111', 'insurance_provider': "No one",
+            'insurance_id': '2222222222', 'address': "Nowhere", 'emergency_contact_phone_number': '33333pa333',
+            'emergency_contact_name': 'No body', "main_hospital": 0}
+        form = PatientRegistrationForm(data=bad_phone_number_form_data)
+        self.assertFalse(form.is_valid(), "accepted letters in phone numbers")
+
+    def test_patient_registration_success(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.good_form_data
+        request.FILES = None
+        request.user = TestRegistrant()
+        patient_registration(request=request)
+        os.remove('logs/patients/who@where.com_activity_log.txt')  # removes filthy activity log byproduct
+        self.assertTrue(Patient.objects.filter(username="who@where.com").exists())
+
+    def test_patient_registration_email_used(self):
+        request = Client()
+        request.method = 'POST'
+        request.POST = self.good_form_data
+        request.FILES = None
+        request.user = TestRegistrant()
+        patient_registration(request=request)  # creates 2 users with email/username who@where.com in test database
+        patient_registration(request=request)
+        os.remove('logs/patients/who@where.com_activity_log.txt')  # removes filthy activity log byproduct
+        self.assertFalse(Patient.objects.filter(id=2).exists())  # if a second user exists in the test database,
+                                                                # the test fails
+
+
+

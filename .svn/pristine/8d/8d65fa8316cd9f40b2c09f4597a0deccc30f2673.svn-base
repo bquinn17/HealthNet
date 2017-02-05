@@ -1,0 +1,20 @@
+{% extends 'health/base.html' %}
+{% block content %}
+    <div class = "col-lg-6 col-lg-offset-3">
+        <div id="registerForm">
+            <div class="well well-lg">
+                <form method="POST" class="post-form form-horizontal">
+                    {% csrf_token %}
+                    <fieldset>
+                        <legend>New Appointment</legend>
+                    </fieldset>
+                    {{ form.as_p }}
+{#                    <p>Dates should be entered as: YYYY-MM-DD HH:MM. Times are in UTC (EDT+4)</p>#}
+                    <br/>
+                    <button class="btn btn-success" type="submit" >Create</button>
+                </form>
+            </div>
+        </div>
+        <p><a href="/accounts/calendar/" class="btn btn-lg btn-danger btn-block">Cancel</a></p>
+    </div>
+{% endblock %}

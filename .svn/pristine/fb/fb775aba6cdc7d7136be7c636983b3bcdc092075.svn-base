@@ -1,0 +1,106 @@
+{% extends "health/base.html" %}
+
+{% block content %}
+
+       <style>
+
+        .profileWell
+        {
+            font-size: 30px;
+        }
+
+        .smLabel
+        {
+            font-size: 9px;
+            color: #aaaaaa;
+            margin-right: 20px;
+        }
+
+        .row
+        {
+            margin-bottom: 10px;
+        }
+
+    </style>
+
+    <div>
+
+        <div class = "row">
+
+            <div class = "col-lg-6">
+
+                <div class = "well well-lg profileWell">
+                    <div class = "row" style="font-size: 80%">
+                        <span class = "smLabel" style="font-size: 80%">Name:</span> {{ patient.get_full_name }}
+                    </div>
+                    <div class = "row" style="font-size: 80%">
+                        <span class = "smLabel" style="font-size: 80%">Email:</span> {{ patient.username }}
+                    </div>
+                    <div class = "row" style="font-size: 80%">
+                        <span class = "smLabel" style="font-size: 80%">Phone:</span> {{ patient.phone_number }}
+                    </div>
+                </div>
+
+                <div class = "well well-lg profileWell">
+                    <div class = "row" style="font-size: 80%">
+                        <span class = "smLabel" style="font-size: 80%">Main Hospital:</span> {{ patient.main_hospital }}
+                    </div>
+                    <div class = "row" style="font-size: 80%">
+                        <a href="/media/{{ patient.medical_information }}" class="btn btn-block btn-info">Download Medical Info</a>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class = "col-lg-6">
+
+                <div class = "well well-lg profileWell">
+                    <div class = "row" style="font-size: 80%">
+                        <span class = "smLabel" style="font-size: 80%">Insurance Provider:</span> {{ patient.insurance_provider }}
+                    </div>
+                    <div class = "row" style="font-size: 80%">
+                        <span class = "smLabel" style="font-size: 80%">Insurance ID:</span> {{ patient.insurance_id }}
+                    </div>
+                </div>
+
+                <div class = "well well-lg profileWell">
+                    <div class = "row" style="font-size: 80%">
+                        <span class = "smLabel" style="font-size: 80%">Emergency Contact Name:</span> {{ patient.emergency_contact_name }}
+                    </div>
+                    <div class = "row" style="font-size: 80%">
+                        <span class = "smLabel" style="font-size: 80%">Emergency Contact Phone:</span> {{ patient.emergency_contact_phone_number }}
+                    </div>
+                </div>
+
+            </div>
+
+
+            <table class="table table-striped table-hover">
+
+                <thead>
+                    <tr>
+                        <th>Prescriptions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for prescription in prescriptions %}
+                        <tr>
+                            <td>
+                                {{ prescription }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+
+
+        </div>
+
+
+
+    </div>
+
+
+{% endblock %}

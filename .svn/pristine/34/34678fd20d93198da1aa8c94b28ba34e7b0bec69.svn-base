@@ -1,0 +1,36 @@
+{% extends 'health/base.html' %}
+{% block content %}
+    <div class = "col-lg-6 col-lg-offset-3">
+
+        <!-- ERROR MESSAGE -->
+        {% if display_errors %}
+        <div class = "alert alert-dismissable alert-danger">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <h4>Oops!</h4>
+            <p>The following errors were found in the form:</p>
+            <ul>
+                {% for error in f_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        <!-- END ERROR MESSAGE -->
+
+        <div id="registerForm">
+
+            <div class="well well-lg">
+
+                <form enctype="multipart/form-data" method="POST" class="post-form form-horizontal">{% csrf_token %}
+                    <fieldset>
+                        <legend>New Message</legend>
+                    </fieldset>
+                    {{ form.as_p }}
+                    <br/>
+                    <button class="btn btn-primary" type="submit">Send</button>
+                </form>
+            </div>
+        </div>
+        <p><a href="/accounts/calendar/" class="btn btn-lg btn-info btn-block">Cancel</a> </p>
+    </div>
+{% endblock %}

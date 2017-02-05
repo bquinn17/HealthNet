@@ -1,0 +1,23 @@
+from django.db import models
+from .nurse import Nurse
+
+
+class Doctor(models.Model, Nurse):
+    # class Meta:
+    #     app_name = 'health'
+    #     db_table = 'health_Doctor'
+
+    hospitals = []
+    position = models.CharField(max_length=50)
+
+    def upload_test_results(self, patient, file_location):
+        # TODO
+        return
+
+    def patient_transfer(self, patient, hospital):
+        # TODO
+        return
+
+    def release_test_results(self, patient):
+        # TODO
+        return

@@ -1,0 +1,69 @@
+{% extends 'health/base.html' %}
+{% block content %}
+
+{% for subject in message_subjects %}
+    <div class = "modal" id = "message{{ forloop.counter }}">
+        <div class = "modal-dialog">
+            <div class = "modal-content">
+                <div class = "modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class = "modal-title">View: <span style = "color: #DF691A">{{ subject }}</span></h4>
+                </div>
+                <div class = "modal-body">
+                {% with forloop.counter as count %}
+                    <!-- so efficient -->
+                    {% for message in message_body_list %}
+                        {% if forloop.counter == count %}
+                            {{ message }}
+                        {% endif %}
+                    {% endfor %}
+                {% endwith %}
+                </div>
+                <div class = "modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class = "col-lg-8 col-lg-offset-2">
+
+        <h2>
+            Message List
+        </h2>
+
+        <div class = "well well-lg">
+
+            {% for subject in message_subjects %}
+
+                <div class="panel panel-info">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">{{ subject }} <span style = "color: #DF691A"></span></h3>
+                    </div>
+                    <div class="panel-body">
+                        <a href = "#" name = "{{forloop.counter}}" class = "btn btn-info viewMessageButton">View Message</a>
+                    </div>
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    <script>
+
+        $(document).ready(function(){
+
+            $(".viewMessageButton").click(function(){
+
+                $("#message"+($(this).attr('name'))).modal('show');
+
+            });
+
+        });
+
+    </script>
+
+{% endblock %}

@@ -1,0 +1,71 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <link rel="stylesheet" type="text/css" href = "{% static 'health/css/bootstrap.css' %}"/>
+        <script type = "text/javascript" src = "{% static 'bootstrap.js' %}"></script>
+        <script type = "text/javascript" src = "{% static 'main.js' %}"></script>
+        <link rel="stylesheet" type="text/css" href = "{% static 'health/css/override.css' %}"/>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+        <title>Team 07a Resources</title>
+    </head>
+
+
+    <body>
+
+        <div id = "dlHeader" class = "row">
+            <img src = "{% static 'health/img/forcexLogo.png' %}"/>
+        </div>
+
+        <div class = "row">
+            <div class = "col-lg-6 col-lg-offset-3">
+
+                <legend>Downloads</legend>
+
+                <a href = "./test_plan.txt">
+                    <img class = "dlPanel" src = "{% static 'health/img/testPlanImg.png' %}"/>
+                </a>
+
+                <a href = "./requirements.txt">
+                    <img class = "dlPanel" src = "{% static 'health/img/requirementsImg.png' %}"/>
+                </a>
+
+            </div>
+        </div>
+
+        <div class = "row">
+            <div class = "col-lg-6 col-lg-offset-3">
+
+                <a href = "./read_me.txt">
+                    <img class = "dlPanel" src = "{% static 'health/img/readmeImg.png' %}"/>
+                </a>
+
+                <a href = "./code.zip">
+                    <img class = "dlPanel" src = "{% static 'health/img/codeImg.png' %}"/>
+                </a>
+
+            </div>
+        </div>
+
+    </body>
+
+    <script>
+
+        $(document).ready(function(){
+
+            $(".dlPanel").hover(
+                    function(){
+                        $(this).animate({opacity: '1.0'}, "fast");
+                    },
+                    function(){
+                        $(this).animate({opacity: '0.5'}, "fast");
+                    }
+            );
+
+        });
+
+    </script>
+
+</html>

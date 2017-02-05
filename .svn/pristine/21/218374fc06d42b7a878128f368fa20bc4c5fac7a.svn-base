@@ -1,0 +1,29 @@
+from django.db import models
+from .actor import Actor
+
+
+class Patient(models.Model, Actor):
+
+    class Meta:
+        app_name = 'health'
+        db_table = 'health_Patient'
+
+    prescriptions = []
+    test_results = []
+    emergency_contact = models.CharField(max_length=50)
+
+    def update_profile(self, username, name, email, contact):
+        super.username = username
+        super.name = name
+        super.email = email
+        self.emergency_contact = contact
+        #TODO 
+        return 0
+
+    def export_info(self):
+        for perscription in self.perscriptions:
+            print(perscription)
+        for test_result in self.test_results:
+            print(test_result)
+        #TODO
+        return

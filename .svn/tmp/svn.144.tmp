@@ -1,0 +1,1411 @@
+"""
+Authors: Nahjee Sowah, Andrew Fountain, Chris Cassidy, Chris Cifolelli, Bryan Quinn
+"""
+import os
+
+from django.contrib import auth
+from django.contrib.auth.decorators import *
+from django.contrib.auth.models import Group
+from django.shortcuts import *
+from django.template.context_processors import csrf
+from django.views.decorators.http import require_http_methods
+from .forms import *
+from .models import *
+
+
+def patient_registration(request):
+    """
+    Brings user to registration page and
+    once entered brings user to success or deny page
+    :param request: web request, possibly containing POST information
+    :return: page depending on input
+    """
+    if not request.user.is_authenticated():
+        if request.method == "POST":
+            form = PatientRegistrationForm(request.POST, request.FILES)
+            if form.is_valid():
+                patient = form.save(commit=False)
+                if User.objects.filter(email=patient.email).exists():
+                    return render(request, 'health/register.html',
+                                  {'form': form, 'title': "New Patient", 'submit': "Register",
+                                   'cancel': "Return to Login", 'email_invalid': True})
+                else:
+                    patient.username = patient.email
+                    patient.set_password(patient.password)
+                    patient.save()
+                    if not Group.objects.filter(name="Patient").exists():
+                        Group.objects.create(name="Patient")
+                    patient_group = Group.objects.get(name="Patient")
+                    patient_group.user_set.add(patient)
+                    hospital = Hospital.objects.get(id=request.POST.get('main_hospital'))
+                    hospital.number_patients += 1
+                    hospital.save()
+                    log_activity(action='Patient Registered', request=request)
+                    return login(request, False, True)
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "There were errors in your registration form: ", 'errors': form.errors})
+        else:
+            form = PatientRegistrationForm()
+            return render(request, 'health/register.html', {'form': form, 'title': "New Patient",
+                                                            'submit': "Register", 'cancel': "Return to Login"})
+    else:
+        return render(request, 'health/notFound.html')
+
+
+def login(request, invalid, registered):
+    """
+    Brings user to login page, but if user is logged in brings them to calender
+    :param request: web request, possibly containing POST information
+    :param registered:
+    :param invalid:
+    :param request: user request
+    :return: login page or calender
+    """
+
+    if request.user.is_authenticated():
+        if is_nurse(request):
+            request.user.isNurse = 1
+        if is_doc(request):
+            request.user.isDoctor = 1
+        return redirect('/accounts/calendar/')
+    dictionary = {"invalid": invalid, "registered": registered}
+    dictionary.update(csrf(request))
+
+    return render_to_response("health/login.html", dictionary)
+
+
+@require_http_methods(["POST"])
+def auth_view(request):
+    """
+    Sees if the the user name and passwords are correct
+    :param request: web request, possibly containing POST information
+    :return: the login page
+    """
+    username = request.POST.get('username', '')  # if no value found in dictionary, return empty string
+    password = request.POST.get('password', '')
+    user = auth.authenticate(username=username, password=password)
+
+    if user is not None:
+        auth.login(request, user)
+        return redirect('/accounts/calendar/')
+    else:
+        return login(request, True, False)
+
+
+def logout(request):
+    """
+    Brings user to logout page
+    :param request: web request, possibly containing POST information
+    :return: logout page
+    """
+    auth.logout(request)
+    return redirect('/accounts/login/')
+
+
+@login_required
+def view_tests(request):
+    """
+    Allows users see test
+    :param request: web request, possibly containing POST information
+    :return: test page
+    """
+    test_list = []
+    is_doctor = False
+
+    if is_patient(request):
+        for test in Test.objects.filter(patient=request.user.id):
+            if test.is_released:
+                test_list.append(test)
+    elif is_doc(request):
+        is_doctor = True
+        test_list = Test.objects.all(issuer=request.user.id)
+
+    context = {
+        'isLoggedIn': request.user.is_authenticated,
+        'test_list': test_list,
+        'is_doctor': is_doctor
+    }
+
+    return render(request, 'health/view_tests.html', context)
+
+
+@login_required
+def update_test(request, test_id=None):
+    """
+    Allows doctor to create or update a test
+    :param test_id: id of the test if being updated
+    :param request: web request, possibly containing POST information
+    :return: new test
+    """
+    if request.user.is_authenticated and is_doc(request):
+        if request.method == "POST":
+            if test_id:
+                test = get_object_or_404(Test, id=test_id)
+                form = CreateTestForm(request.POST, request.FILES, instance=test)
+            else:
+                form = CreateTestForm(request.POST, request.FILES)
+            if form.is_valid():
+                test = form.save(commit=False)
+                patient = get_object_or_404(Patient, id=request.POST.get('patient'))
+                log_activity('Test created for ' + str(patient.username) + ' by Dr. ' +
+                             str(request.user.last_name) + ' called ' +
+                             str(request.POST.get('description')), request)
+                test.issuer = Doctor.objects.get(id=request.user.id)
+                form.save()
+                if test_id:
+                    return manage_tests(request, True, "Test successfully updated.")
+                else:
+                    return manage_tests(request, True, "Test created successfully.")
+            else:
+                errors = form.errors
+                return render(request, 'health/error_template.html', {
+                    'message': 'There were errors in your appointment form: ', 'errors': errors})
+        else:
+            if test_id:
+                test = get_object_or_404(Test, id=test_id)
+                form = CreateTestForm(instance=test)
+                return render(request, 'health/register.html', {'form': form, 'title': "Update Test",
+                                                                'submit': "Save", 'cancel': "Cancel"})
+            else:
+                form = CreateTestForm()
+                return render(request, 'health/register.html', {'form': form, 'title': "New Test",
+                                                                'submit': "Create", 'cancel': "Cancel"})
+    else:
+        return render(request, 'health/notFound.html')
+
+
+@login_required
+def manage_tests(request, display_message, message):
+    """
+    Allows user to change tests
+    :param message:
+    :param display_message:
+    :param request: web request, possibly containing POST information
+    :return: an updated test
+    """
+
+    if is_doc(request):
+        test_list = Test.objects.filter(issuer=Doctor.objects.get(id=request.user.id))
+    else:
+        test_list = []
+
+    context = {
+        'isLoggedIn': request.user.is_authenticated,
+        'test_list': test_list,
+        'displayMessage': display_message,
+        'message': message,
+    }
+    return render(request, 'health/manage_tests.html', context)
+
+
+@login_required
+def create_appointment(request):
+    """
+    Decides whether an appointment is valid
+    :param request: web request, possibly containing POST information
+    :return: confirmation
+    """
+    if request.method == "POST":
+        form = None
+        try:
+            if is_patient(request):
+                form = PatientAppointment(patient=Patient.objects.filter(id=request.user.id)[0],
+                                          data=request.POST)
+                appointment = form.save(commit=False)
+                appointment.patient = Patient.objects.get(id=request.user.id)
+            elif is_doc(request):
+                form = DoctorAppointment(data=request.POST, doctor=request.user.id)
+                form.doctor = request.user.id
+                appointment = form.save(commit=False)
+                appointment.doctor = Doctor.objects.get(id=request.user.id)
+            elif is_nurse(request):
+                form = NurseAppointment(nurse=Nurse.objects.filter(id=request.user.id)[0], data=request.POST)
+                appointment = form.save(commit=False)
+                appointment.hospital = Hospital.objects.get(
+                    id=Nurse.objects.get(id=request.user.id).working_hospital_id)
+            else:
+                return render(request, 'health/error_template.html', {'message': "Admins cannot create appointments"})
+
+            if form.is_valid():
+                appointment.save()
+                log_activity('Appointment created for ' + str(appointment.start_date)[:19] + ' with Dr. ' +
+                             str(appointment.doctor.last_name) + ' ' + ' at ' +
+                             str(appointment.hospital.hospital_name), request)
+                return calendar(request, True, "Appointment Created!")
+            else:
+                return render(request, 'health/appt_invalid.html', {'form': form})
+        except ValueError:
+            if form:
+                if "__all__" not in form.errors:
+                    errors = form.errors
+                else:
+                    errors = form.non_field_errors
+            else:
+                errors = ("Unknown error",)
+            return render(request, 'health/error_template.html',
+                          {'message': 'There were errors in your appointment form: ', 'errors': errors})
+    else:
+        if is_patient(request):
+            form = PatientAppointment()
+        elif is_doc(request):
+            form = DoctorAppointment()
+            form.doctor = request.user.id
+        elif is_nurse(request):
+            form = NurseAppointment()
+        else:
+            return render(request, 'health/error_template.html', {'message': "Admins cannot create appointments"})
+        return render(request, 'health/create_appointment.html', {'form': form})
+
+
+@login_required
+def update_appointment(request, pk):
+    """
+    view for updating appointments
+    :param request: web request, possibly containing POST information
+    :param pk: primary key for the given appointment
+    :return: web page render
+    """
+
+    appointment = get_object_or_404(Appointment, id=pk)
+    if request.method == "POST":
+        if is_patient(request):
+            form = PatientAppointment(patient=Patient.objects.get(id=request.user.id), data=request.POST,
+                                      instance=appointment)
+            appointment.patient = Patient.objects.get(id=request.user.id)
+        elif is_doc(request):
+            form = DoctorAppointment(data=request.POST, doctor=request.user.id,
+                                     instance=appointment)
+            appointment.doctor = Doctor.objects.get(id=request.user.id)
+        elif is_nurse(request):
+            form = NurseAppointment(nurse=Nurse.objects.get(id=request.user.id), data=request.POST,
+                                    instance=appointment)
+            appointment.hospital = Hospital.objects.get(id=Nurse.objects.get(id=request.user.id).working_hospital_id)
+        else:
+            return render(request, 'health/error_template.html', {'message': "Admins cannot update appointments"})
+        if 'update' in request.POST:
+            if form.is_valid():
+                appointment.delete()
+                save_appointment = form.save(commit=False)
+                save_appointment.save()
+                log_activity('Appointment updated to ' + str(appointment.start_date)[:19] + ' with Dr. ' +
+                             str(appointment.doctor.last_name) + ' ' + ' at ' +
+                             str(appointment.hospital), request)
+                return calendar(request, True, "Appointment Updated!")
+            else:
+                if "__all__" not in form.errors:
+                    errors = form.errors
+                else:
+                    errors = form.non_field_errors
+                return render(request, 'health/error_template.html',
+                              {'message': 'There were errors in your appointment form: ', 'errors': errors})
+        # Nurses can't cancel appointments
+        elif not is_nurse(request):  # if update not in POST (if they pick the delete button).
+            log_activity('Appointment deleted for ' + str(appointment.start_date)[:19] + ' with Dr. ' +
+                         str(appointment.doctor.last_name) + ' ' + ' at ' +
+                         str(appointment.hospital), request)
+            appointment.delete()
+            return calendar(request, True, "Appointment Updated!")
+        else:
+            return render(request, 'health/error_template.html', {'message': "Nurses cannot cancel appointments"})
+
+    else:
+        if is_patient(request):
+            form = PatientAppointment(instance=appointment)
+
+        elif is_doc(request):
+            form = DoctorAppointment(instance=appointment)
+            form.doctor = request.user.id
+
+        elif is_nurse(request):
+            form = NurseAppointment(instance=appointment)
+
+        else:
+            return render(request, 'health/error_template.html', {'message': "Admins cannot update appointments"})
+
+        return render(request, 'health/appt_update.html', {'form': form})
+
+
+# we never use this function
+@login_required
+def delete_appointment(request, appointment_id):
+    """
+    delete appointment
+    :param request: web request, possibly containing POST information
+    :param appointment_id: what appointment it is
+    :return: the calender page
+    """
+    a = get_object_or_404(Appointment, pk=appointment_id)
+    a.delete()
+    return calendar(request, True, "Appointment Deleted!")
+
+
+@login_required
+def calendar(request, display_message=False, message=""):
+    """
+    Builds calender page for specific user
+    :param request: web request, possibly containing POST information
+    :param message:
+    :param display_message:
+    :param request: user input
+    :return: calender
+    """
+    #  template = loader.get_template('health/calendar.html')
+
+    if request.user.is_authenticated:
+        if_nurse = True if is_nurse(request) else False
+
+        if is_patient(request):
+            appointment_list = Appointment.objects.filter(patient=request.user.id)
+        elif is_doc(request):
+            appointment_list = Appointment.objects.filter(doctor=request.user.id)
+        else:
+            appointment_list = Appointment.objects.all()
+
+        context = {
+            'isLoggedIn': request.user.is_authenticated,
+            'isNurse': if_nurse,
+            'appointment_list': appointment_list,
+            'displayMessage': display_message,
+            'message': message,
+        }
+
+        return render(request, 'health/calendar.html', context)
+    else:
+        return login(request, False, False)
+
+
+def error_page(request):
+    """
+    brings up error 404 page if error
+    :param request: web request, possibly containing POST information
+    :return: 404 page
+    """
+    return render_to_response('health/notFound.html')
+
+
+def update_patient_profile(request):
+    """
+    Brings user to update patient profile page
+    :param request: web request, possibly containing POST information
+    :return: update profile page
+    """
+    patient = get_object_or_404(Patient, id=request.user.id)
+    if request.method == "POST":
+        form = PatientUpdateForm(data=request.POST, instance=patient)
+        if form.is_valid():
+            save_patient = form.save(commit=False)
+            save_patient.save()
+            log_activity(action='Profile information updated', request=request)
+            return calendar(request, True, "Patient Profile Updated!")
+        else:
+            return render(request, 'health/error_template.html',
+                          {'message': "There were errors in your update form: ", 'errors': form.errors})
+    else:
+        form = PatientUpdateForm(instance=patient)
+        return render(request, 'health/profile_update.html', {'form': form})
+
+
+def update_med_info(request, patient_id):
+    """
+    Allows patient to upload a new file for medical info
+    :param request: web request, possibly containing POST information
+    :param patient_id: user id
+    :return: update medical info page
+    """
+    if request.user.is_authenticated():
+        patient = get_object_or_404(Patient, id=patient_id)
+        if is_nurse(request):
+            nurse = get_object_or_404(Nurse, id=request.user.id)
+            if nurse.working_hospital_id != patient.main_hospital_id and nurse.working_hospital_id != patient.current_hospital_id:
+                return render(request, 'health/error_template.html',
+                              {'message': "You are not authorized to update this patient's medical information"})
+        if is_doc(request) or is_nurse(request):
+            if request.method == 'POST':
+                form = UpdateMedForm(data=request.POST, files=request.FILES, instance=patient)
+                if form.is_valid():
+                    form.save(commit=True)
+                    #    patient.medical_information = str(patient.username) + "medical information"
+                    log_activity(action='Patient medical information updated', request=request)
+                    return view_patients(request, True, "Updated Medical Info!")
+                else:
+                    form = UpdateMedForm(instance=patient)
+                    return render(request, 'health/update_med.html',
+                                  {'form': form, 'display_errors': True, 'errors': form.errors})
+            else:
+                form = UpdateMedForm(instance=patient)
+                return render(request, 'health/update_med.html', {'form': form})
+        else:
+            return render(request, 'health/notFound.html')
+    else:
+        return render(request, 'health/notFound.html')
+
+
+def log_activity(action, request):
+    """
+    writes activity log for a user. form and new are for recording patient registration.
+    This function wont work if multiple people go to log their activity at the exact same time
+    :param action: Users input
+    :param request: activity to log
+    :return: none
+    """
+    # writes activity log for a user. form and new are for recording patient registration.
+    # This function wont work if multiple people go to log their activity at the exact same time
+
+    # all this jazz before the while loop determines which files to write to and with what information
+    file_list = []  # stores log text file names
+    if request.user.is_authenticated():  # if user is logged in
+        # if/elif statements check if user is either a doctor, nurse, patient, or admin
+        if is_patient(request):
+            patient = get_object_or_404(Patient, id=request.user.id)
+            actor = 'Patient'
+            file_list.append(
+                'logs/hospitals/' + str(patient.main_hospital.hospital_name).replace(' ',
+                                                                                     '_') + '_' + 'activity_log.txt')
+            file_list.append(
+                'logs/patients/' + str(patient.username) + '_' + 'activity_log.txt')  # adds file name to list
+
+        elif is_nurse(request):
+            user = get_object_or_404(Nurse, id=request.user.id)
+            actor = 'Nurse'
+            file_list.append('logs/hospitals/' +
+                             str(user.working_hospital.hospital_name).replace(' ', '_') + '_' + 'activity_log.txt')
+            file_list.append('logs/nurses/' + str(user.username) + '_' + 'activity_log.txt')
+
+        elif is_doc(request):
+            user = get_object_or_404(Doctor, id=request.user.id)
+            actor = 'Doctor'
+            for hospital in user.hospitals.all():  # writes action to activity log of all hospitals the doctor works at
+                file_list.append(
+                    'logs/hospitals/' + str(hospital.hospital_name).replace(' ', '_') + "_activity_log.txt")
+            file_list.append('logs/doctors/' + str(user.username) + '_' + 'activity_log.txt')
+
+        else:
+            user = request.user  # for admins, they have no extra data stored in models
+            actor = 'Admin'
+            file_list.append('logs/admins/' + str(user.username) + '_' + 'activity_log.txt')
+
+        username = request.user.username
+
+    else:  # should be only for when patient is registering
+        username = request.POST.get('email')
+        file_list.append('logs/patients/' + str(username) + '_' + 'activity_log.txt')
+
+        hospital_name = get_object_or_404(Hospital, id=request.POST.get('main_hospital')).hospital_name
+        file_list.append('logs/hospitals/' + str(hospital_name).replace(' ', '_') + '_' + 'activity_log.txt')
+        actor = 'Patient'
+
+    i = 0
+    while i < len(file_list):  # writes log in each file whose name is specified in file_list
+        file = open(file_list[i], 'a')
+        file.write(str(timezone.now())[:19])
+        # appends truncated date. We don't need fractions of a second or time offset to be recorded, times in UTC
+        file.write('{0:<80}'.format('\t\t' + actor + '\tusername:\t' + str(username)))  # purty even spacing
+        file.write('\t\tAction: ' + action + '\n')
+        file.close()
+        i += 1
+
+
+# this function is mostly redundant. Would return all logs for given username
+def view_log_activity(request, username=None,
+                      hospital=None):  # can view either hospital log or user log, not both
+    """
+    Allows user to view the activity log
+    :param request: web request, possibly containing POST information
+    :param username: users username
+    :param hospital: hospital they want to see
+    :return: the activity log
+    """
+    if request.user.is_staff:  # can only view log activity as an admin (staff)
+        if username is not None:
+            if Patient.objects.filter(username=request.user.username).exists():
+                file = open('logs/patients/' + str(username) + '_' + 'activity_log.txt', 'r')
+                return HttpResponse(content=file,
+                                    content_type='text/plain')  # returns contents of text file as http response
+            else:
+                return render_to_response('health/notFound.html')
+        elif hospital is not None:
+            file_list = []
+            for patient in Patient.objects.filter(hospital=hospital):
+                file_list.append('logs/patients/' + str(patient.username) + '_' + 'activity_log.txt')
+
+            return HttpResponse(content=file_list,
+                                content_type='text/plain')  # returns contents of text file as http response
+        else:
+            render_to_response('health/notFound.html')
+    else:
+        render_to_response('health/notFound.html')
+
+
+def sdi(time='2016-01-01 00:00:00'):
+    # string date to integer function, for converting string times as found in function below.
+    # returns time in seconds since 2000
+    # substring for each part of the date given
+    """
+    :param time: web request, possibly containing POST information
+    :return: time
+    """
+    year = int(time[2:4])
+    month = int(time[5:7])
+    day = int(time[8:10])
+    hour = int(time[11:13])
+    minute = int(time[14:16])
+    sec = int(time[17:19])
+
+    def month_dict(m, y):  # returns number of seconds in each month
+        if (y % 4) == 0 and y != 0:  # leap years don't happen on the turn of a century
+            return {  # returns number of seconds in each month if a leap year. 86400 is number of seconds per day
+                1: (31 * 86400), 2: (29 * 86400), 3: (31 * 86400), 4: (30 * 86400), 5: (31 * 86400),
+                6: (30 * 86400),
+                7: (31 * 86400), 8: (31 * 86400), 9: (30 * 86400), 10: (31 * 86400), 11: (30 * 86400),
+                12: (31 * 86400)
+            }.get(m, 30)
+
+        else:
+            return {
+                # returns number of seconds in each month if not a leap year. 86400 is number of seconds per day
+                1: (31 * 86400), 2: (28 * 86400), 3: (31 * 86400), 4: (30 * 86400), 5: (31 * 86400),
+                6: (30 * 86400),
+                7: (31 * 86400), 8: (31 * 86400), 9: (30 * 86400), 10: (31 * 86400), 11: (30 * 86400),
+                12: (31 * 86400)
+            }.get(m, 30)  # end month_dict
+
+    def s_in_year(y):
+        if (y % 4) == 0:
+            return 31622400  # number of seconds in a leap year
+        else:
+            return 31536000  # number of seconds in a normal year
+
+    year_sum = 0
+    k = 0
+    while k < year:  # doesnt include current year. Not that it matters, really
+        year_sum += s_in_year(k)
+        k += 1
+
+    j = 0
+    month_sum = 0
+    while j < month:
+        month_sum += month_dict(j + 1, year)
+        j += 1
+    # returns number of seconds that the time is from midnight 1/1/2000
+    return year_sum + month_sum + day * 24 + hour * 3600 + minute * 60 + sec
+
+
+def view_log_by_time(request):
+    # can either search by username or by hospital, not both
+    #   time is taken as a string, time 1 being starting date/time
+    #   and time 2 being end date/time. In same format as str(django's timezone.now output)
+    # some default values to get rid of annoying yellow highlighting by pycharm
+    # only hospital and username defaults are used
+    """
+    :param request: web request, possibly containing POST information
+    :return: login info
+    """
+    hospital = None  # default values
+    username = ''
+    time1 = '2000-01-01 00:00:00'
+    time2 = '2099-12-12 23:59:59'
+
+    if request.user.is_staff == 0:  # can only access if admin
+        return render_to_response('health/notFound.html')
+
+    open("logs/temp.txt", 'w').close()  # clears temp text file
+
+    if request.method == "GET":  # form to choose user/hospital data
+        form = LogSearchForm()
+        return render(request, 'health/log_search.html', {'form': form})
+    if request.method == "POST":
+        form = LogSearchForm(request.POST)
+        if form.is_valid():
+            username = str(request.POST.get('user_email'))
+            time1 = request.POST.get('start_time')
+            time2 = request.POST.get('end_time')
+        else:
+            return render(request, 'health/error_template.html',
+                          {'message': "There were errors in your log search form: ", 'errors': form.errors})
+
+    if request.POST.get('hospital') != '':
+        hospital = get_object_or_404(Hospital, id=int(request.POST.get('hospital')))
+    if username == '' and hospital is None:
+        return render(request, 'health/error_template.html', {'message': "Please specify either a hospital or a user"})
+    file = None
+    if username != '' and request.user.is_staff:  # only admins can do this
+        # if/elif statements check if user provided is either a doctor, nurse, patient, or admin
+        if Patient.objects.filter(username=username).exists():
+            path_of_the_patient = 'logs/patients/' + str(username) + '_' + 'activity_log.txt'
+            if os.path.exists(path_of_the_patient):
+                file = open(path_of_the_patient, 'r')  # log text file to be read
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "This patient has no activity logged yet"})
+
+        elif Nurse.objects.filter(username=username).exists():
+            path_of_the_nurse = 'logs/nurses/' + str(username) + '_' + 'activity_log.txt'
+
+            if os.path.exists(path_of_the_nurse):
+                file = open(path_of_the_nurse, 'r')  # log text file to be read
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "This nurse has no activity logged yet"})
+
+        elif Doctor.objects.filter(username=username).exists():
+            path_of_the_doctor = 'logs/doctors/' + str(username) + '_' + 'activity_log.txt'
+
+            if os.path.exists(path_of_the_doctor):
+                file = open(path_of_the_doctor, 'r')  # log text file to be read
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "This doctor has no activity logged yet"})
+
+        elif User.objects.filter(username=username).exists():  # only if admin
+            path_of_the_admin = 'logs/admins/' + str(username) + '_' + 'activity_log.txt'
+
+            if os.path.exists(path_of_the_admin):
+                file = open(path_of_the_admin, 'r')  # log text file to be read
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "This administrator has no activity logged yet"})
+
+        else:
+            return render(request, 'health/error_template.html', {'message': "Invalid user provided"})
+
+    elif hospital is not None:
+        if os.path.exists('logs/hospitals/' + str(hospital.hospital_name).replace(' ', '_') + '_' + 'activity_log.txt'):
+            file = open('logs/hospitals/' + str(hospital.hospital_name).replace(' ', '_') + '_'
+                        + 'activity_log.txt', 'r')
+        else:
+            return render(request, 'health/error_template.html',
+                          {'message': "This hospital has no activity logged yet"})
+
+    temp_file = open("logs/temp.txt", 'a')
+    line_list = file.readlines()  # creates a list whose elements are each line from the log text file
+    s_time1 = sdi(time1)  # time 1 and 2 in seconds since midnight 1/1/2000
+    s_time2 = sdi(time2)
+
+    i = 0
+    while i < len(line_list):
+        if sdi(str(line_list[i])[0:19]) >= s_time1 and sdi(
+                str(line_list[i])[0:19]) <= s_time2:  # compares each log entry time to bounds passed to function
+            temp_file.write(str(line_list[i]))
+        i += 1
+    temp_file = open("logs/temp.txt", 'r')
+    return HttpResponse(content=temp_file, content_type='text/plain')  # works for now. a bit ugly, though
+    # return_file = temp_file.readlines()   #templates are evil; doesnt render tab characters from text file correctly
+    # return render(request, 'health/view_log.html', {'return_file': return_file})
+
+
+def view_patients(request, display_message, message):
+    """
+    Allows doctors and nurses to be able to view patients
+    :param message:
+    :param display_message:
+    :param request: web request, possibly containing POST information
+    :return: patient list page
+    """
+    if request.user.is_authenticated():
+
+        patient_list = []
+
+        if is_doc(request):
+            # User is a Doctor
+            this_user = get_object_or_404(Doctor, id=request.user.id)
+            for patient in Patient.objects.all():
+                if patient.is_checked_in:
+                    if this_user.hospitals.filter(pk=patient.current_hospital_id).exists():
+                        patient_list.append(patient)
+
+        elif is_nurse(request):
+            # User is a Nurse
+            this_user = get_object_or_404(Nurse, id=request.user.id)
+            hospital = this_user.working_hospital
+            patient_list = Patient.objects.filter(current_hospital_id=hospital.id)
+
+        elif not is_patient(request):
+            # User is an admin
+            patient_list = Patient.objects.all()
+
+        else:  # if patient
+            return render(request, 'health/notFound.html')
+
+        context = {
+            'patients': patient_list,
+            'is_doc_or_admin': is_doc(request) or request.user.is_staff,
+            'displayMessage': display_message,
+            'message': message,
+        }
+
+        return render(request, 'health/patients.html', context)
+    else:
+        return render(request, 'health/notFound.html')
+
+
+def admin_genesis(request):
+    """
+    Creates admin user
+    :param request: web request, possibly containing POST information
+    :return:
+    """
+    if request.user.is_staff:
+        if request.method == "POST":
+            form = AdminCreationForm(request.POST)
+            if form.is_valid():
+                if User.objects.filter(email=request.POST.get('email')).exists():
+                    return render(request, 'health/register.html',
+                                  {'form': form, 'title': "New Admin", 'submit': "Create", 'cancel': "Cancel",
+                                   'email_invalid': True})
+                else:
+                    username = request.POST.get('email')
+                    password = request.POST.get('password')
+                    User.objects.create_superuser(username, username, password)
+                    log_activity(action='Admin Created', request=request)
+                    return calendar(request, True, "Created an Admin!")
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "There were errors in your admin creation form: ", 'errors': form.errors})
+        else:
+            form = AdminCreationForm()
+            return render(request, 'health/register.html', {'form': form, 'title': "New Admin",
+                                                            'submit': "Create", 'cancel': "Cancel"})
+    else:
+        return render_to_response('health/notFound.html')
+
+
+def doctor_creation(request):
+    """
+    Allows administrator create a doctor
+    :param request: web request, possibly containing POST information
+    :return: new doctor
+    """
+    if request.user.is_staff:  # can only create doctors if admin (staff)
+        if request.method == "POST":
+            form = DoctorCreationForm(request.POST)
+            if form.is_valid():
+                doctor = form.save(commit=False)
+                if User.objects.filter(email=doctor.email).exists():
+                    return render(request, 'health/register.html',
+                                  {'form': form, 'title': "New Doctor", 'submit': "Create", 'cancel': "Cancel",
+                                   'email_invalid': True})
+                else:
+                    doctor.username = doctor.email
+                    doctor.set_password(doctor.password)
+                    doctor.save()
+                    if not Group.objects.filter(name="Doctor").exists():
+                        Group.objects.create(name="Doctor")
+                    doc_group = Group.objects.get(name="Doctor")
+                    doc_group.user_set.add(doctor)
+
+                    # Have to do this manually, .save() doesnt do it for whatever reason
+                    for post_id in request.POST.getlist('hospitals'):
+                        doctor.hospitals.add(Hospital.objects.get(id=post_id))
+                    log_activity(action='Doctor Registered: ' + str(doctor.email), request=request)
+                    return calendar(request, True, "Created a Doctor!")
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "There were errors in your doctor creation form: ", 'errors': form.errors})
+        else:
+            form = DoctorCreationForm()
+            return render(request, 'health/register.html',
+                          {'form': form, 'title': "New Doctor", 'submit': "Create", 'cancel': "Cancel"})
+    else:
+        return render_to_response('health/notFound.html')
+
+
+def nurse_creation(request):
+    """
+    Allows administrator to create a new nurse.
+    :param request: web request, possibly containing POST information
+    :return: new nurse
+    """
+    if request.user.is_staff:  # can only create nurses if admin (staff)
+        if request.method == "POST":
+            form = NurseCreationForm(request.POST)
+            if form.is_valid():
+                nurse = form.save(commit=False)
+                if User.objects.filter(email=nurse.email).exists():
+                    return render(request, 'health/register.html', {'form': form, 'title': "New Nurse",
+                                                                    'submit': "Create", 'cancel': "Cancel",
+                                                                    'email_invalid': True})
+                else:
+                    nurse.username = nurse.email
+                    nurse.set_password(nurse.password)
+                    nurse.save()
+                    if not Group.objects.filter(name="Nurse").exists():
+                        Group.objects.create(name="Nurse")
+                    nurse_group = Group.objects.get(name="Nurse")
+                    nurse_group.user_set.add(nurse)
+                    log_activity(action='Nurse Registered: ' + str(nurse.email), request=request)
+                    return calendar(request, True, "Created a Nurse!")
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "There were errors in your nurse creation form: ", 'errors': form.errors})
+        else:
+            form = NurseCreationForm()
+            return render(request, 'health/register.html', {'form': form, 'title': "New Nurse",
+                                                            'submit': "Create", 'cancel': "Cancel"})
+    else:
+        return render_to_response('health/notFound.html')
+
+
+def hospital_creation(request):
+    """
+    Allows administrator to create a new nurse.
+    :param request: web request, possibly containing POST information
+    :return: new nurse
+    """
+    if request.user.is_staff:  # can only create hospitals if admin (staff)
+        if request.method == "POST":
+            form = HospitalCreationForm(request.POST)
+            if form.is_valid():
+                hospital = form.save(commit=False)
+                if Hospital.objects.filter(hospital_name=hospital.hospital_name).exists():
+                    return render(request, 'health/register.html', {'form': form, 'title': "New Hospital",
+                                                                    'submit': "Create", 'cancel': "Cancel",
+                                                                    'h_name_invalid': True})
+                else:
+                    hospital.save()
+                    log_activity(action='Hospital Created: ' + str(hospital.hospital_name), request=request)
+                    return calendar(request, True, "Created a Hospital")
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "There were errors in your nurse creation form: ", 'errors': form.errors})
+        else:
+            form = HospitalCreationForm()
+            return render(request, 'health/register.html', {'form': form, 'title': "New Hospital",
+                                                            'submit': "Create", 'cancel': "Cancel"})
+    else:
+        return render_to_response('health/notFound.html')
+
+
+def private_messaging(request):
+    """
+    allows users to send private messages between each other.
+    :param request: web request, possibly containing POST information
+    :return: message to user
+    """
+    if request.user.is_authenticated():
+        if request.method == "POST":
+            form = MessageForm(request.POST)
+            if form.is_valid():
+                if User.objects.filter(email=request.POST.get('recipient')).exists():
+                    if not os.path.exists('messages/' + str(request.POST.get('recipient'))):
+                        os.makedirs('messages/' + str(
+                            request.POST.get('recipient')))  # each user has a folder server-side that stores messages
+                    if os.path.exists('messages/' + str(request.POST.get('recipient')) + '/' + str(
+                            request.POST.get('subject'))):
+                        file = open('messages/' + str(request.POST.get('recipient')) + '/'
+                                    + str(request.POST.get('subject')) + str(timezone.now())[:19].replace(':', ' '),
+                                    'a')
+                        # if a message is named the same as another, creates a unique file name using timezone.now
+                    # otherwise would write to the same message (continue at the end of the body of the other message)
+                    else:
+                        file = open('messages/' + str(request.POST.get('recipient')) + '/'
+                                    + str(request.POST.get('subject')), 'a')
+                        # file is named by the subject of the message
+                    file.write(
+                        str(request.user.get_full_name()) + "\n")  # appends the sender's name to the start of the file
+                    file.write(str(request.POST.get('body')))  # file contains body of message
+                    file.close()
+                    log_activity(action='Message sent to ' + str(request.POST.get('recipient')), request=request)
+                    return display_messages(request, True, False)
+                else:
+                    return display_messages(request, False, True)
+            else:
+                if "__all__" not in form.errors:
+                    return render(request, 'health/error_template.html',
+                                  {'message': "There were errors in your message form: ", 'errors': form.errors})
+                else:
+                    return render(request, 'health/error_template.html',
+                                  {'message': "There were errors in your message form: ",
+                                   'errors': form.non_field_errors()})
+        else:
+            form = MessageForm()
+            return render(request, 'health/message_form.html', {'form': form})
+    else:
+        return render_to_response('health/notFound.html')
+
+
+def display_messages(request, message_sent, invalid_email):
+    """
+    displays private message sent
+    :param message_sent:
+    :param invalid_email:
+    :param request: web request, possibly containing POST information
+    :return: private message
+    """
+    if request.user.is_authenticated():
+        if os.path.exists('messages/' + str(request.user.email)):
+            message_subject_list = os.listdir('messages/' + str(request.user.email))
+            message_body_list = []
+            message_sender_list = []
+            # message_views = []
+
+            for message in message_subject_list:
+                file = open('messages/' + str(request.user.email) + '/' + message, 'r')
+                line_list = file.readlines()
+
+                for line in line_list:  # removes lines that are only new lines
+                    if line == '\n':
+                        line_list.remove(line)
+
+                i = len(line_list)
+                while i > 0:  # removes new lines from each line in the list of lines
+                    line_list[i - 1] = line_list[i - 1].rstrip()
+                    i -= 1
+                sender = line_list[0]
+                body_element = line_list[1:]
+                message_sender_list.append(sender)
+                message_body_list.append(body_element)
+                file.close()
+
+            return render(request, 'health/message_view.html',
+                          {'message_subjects': message_subject_list,
+                           'message_body_list': message_body_list,
+                           'message_sender_list': message_sender_list,
+                           'message_sent': message_sent, 'invalid_email': invalid_email})
+
+        else:
+            return render(request, 'health/message_view.html', {'no_messages': True})
+
+
+def download_file(request, file_name):
+    """
+    Displays the file
+    :param request: web request, possibly containing POST information
+    :param file_name: file
+    :return:
+    """
+    if request.user.is_authenticated():
+        if os.path.exists(settings.MEDIA_ROOT + str(file_name)):
+            if is_patient(request):
+                patient = get_object_or_404(Patient, username=request.user.username)
+                if str(patient.medical_information) == file_name:
+                    log_activity(action="Patient downloaded medical information file: " + str(file_name),
+                                 request=request)
+                    file = open(settings.MEDIA_ROOT + file_name, 'rb')
+                    response = HttpResponse(file, content_type="force-download")
+                    response['Content-Disposition'] = 'attachment; filename=%s' % str(patient.medical_information.name)
+                    return response
+                else:
+                    for test in Test.objects.filter(patient=patient):
+                        if file_name == test.results:
+                            if test.is_released:
+                                log_activity(action="Patient downloaded medical information file: " + str(file_name),
+                                             request=request)
+                                file = open(settings.MEDIA_ROOT + file_name, 'rb')
+                                response = HttpResponse(file, content_type="force-download")
+                                response['Content-Disposition'] = 'attachment; filename=%s' % str(
+                                    test.results)
+                                return response
+                            else:
+                                return render(request, 'health/error_template.html',
+                                              {'message': "The requested test has not yet been released"})
+
+                    log_activity(
+                        action="Patient attempted to access medical information file: " + str(file_name),
+                        request=request)
+                    return render(request, "health/notFound.html")
+
+            elif is_nurse(request):
+                nurse = Nurse.objects.get(id=request.user.id)
+                patient = Patient.objects.get(medical_information=file_name)
+                if patient.main_hospital.id == nurse.working_hospital.id or \
+                                nurse.working_hospital.id == patient.current_hospital_id:
+                    log_activity(action="Nurse downloaded medical information file: " + str(file_name), request=request)
+                    file = open(settings.MEDIA_ROOT + file_name, 'rb')
+                    response = HttpResponse(file, content_type="application/force-download")
+                    response['Content-Disposition'] = 'attachment; filename=%s' % str(file_name)
+                    return response
+                else:
+                    log_activity(
+                        action="Nurse attempted to access medical information file outside of working hospital: " +
+                               str(file_name),
+                        request=request)
+
+            elif is_doc(request):
+                log_activity(action="Doctor downloaded medical information file: " + str(file_name), request=request)
+                file = open(settings.MEDIA_ROOT + file_name, 'rb')
+                response = HttpResponse(file, content_type="application/force-download")
+                response['Content-Disposition'] = 'attachment; filename=%s' % str(file_name)
+                return response
+            else:  # if admin
+                log_activity(action="Admin downloaded medical information file: " + str(file_name), request=request)
+                file = open(settings.MEDIA_ROOT + file_name, 'rb')
+                response = HttpResponse(file, content_type="application/force-download")
+                response['Content-Disposition'] = 'attachment; filename=%s' % str(file_name)
+                return response
+        else:
+            return render(request, "health/notFound.html")
+    else:
+        return render(request, "health/notFound.html")
+
+
+def make_new_prescription(request):
+    """
+    Creates a new perscription
+    :param request: web request, possibly containing POST information
+    :return: a new perscription
+    """
+    if request.user.is_staff:
+        if request.method == "POST":
+            form = PrescriptionForm(request.POST)
+            if form.is_valid():
+                prescription = form.save(commit=False)
+                if Prescription.objects.filter(prescription_name=prescription.prescription_name).exists():
+                    return render(request, 'health/register.html', {'form': form, 'title': "New Prescription",
+                                                                    'submit': "Create", 'cancel': "Cancel",
+                                                                    'p_name_invalid': True})
+                else:
+                    prescription.save()
+                    log_activity(action='Prescription created', request=request)
+                    return calendar(request, True, "Created a Prescription!")
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "There were errors in your prescription creation form: ",
+                               'errors': form.errors})
+        else:
+            form = PrescriptionForm()
+            return render(request, 'health/register.html', {'form': form, 'title': "New Prescription",
+                                                            'submit': "Create", 'cancel': "Cancel"})
+    else:
+        return render(request, 'health/notFound.html')
+
+
+def add_prescription_to_patient(request):
+    """
+    adds a prescription to a patient
+    :param request: web request, possibly containing POST information
+    :return: a patients prescription
+    """
+    if is_doc(request) or is_nurse(request):
+        if request.method == "POST":
+            form = AddPatientPrescriptionForm(request.POST)
+            if form.is_valid():
+                patient = get_object_or_404(Patient, id=request.POST.get('patient'))
+                patient.prescriptions.add(Prescription.objects.get(id=request.POST.get('prescription')))
+                patient.save()
+                return calendar(request, True, "Prescription added successfully!")
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "There were errors in your prescription creation form: ",
+                               'errors': form.errors})
+        else:
+            form = AddPatientPrescriptionForm()
+            return render(request, 'health/register.html', {'form': form, 'title': "New Patient Prescription",
+                                                            'submit': "Prescribe", 'cancel': "Cancel"})
+    else:
+        return render(request, 'health/notFound.html')
+
+
+def patient_profile_view(request):
+    """
+    Allows user to see patient profile user
+    :param request: web request, possibly containing POST information
+    :return: the patient profile view
+    """
+    if request.user.is_authenticated():
+        if is_patient(request):
+            patient = get_object_or_404(Patient, id=request.user.id)
+            prescription_list = []
+            for prescription in patient.prescriptions.all():
+                prescription_list.append(prescription.prescription_name)
+            return render(request, 'health/profile_view.html', {'patient': patient, 'prescriptions': prescription_list})
+        else:
+            return render(request, 'health/notFound.html')
+    else:
+        return render(request, 'health/notFound.html')
+
+
+def admit_patient(request):
+    """
+    admit a patient to a hospital
+    :param request: web request, possibly containing POST information
+    :return: a new patient assigned to a hospital
+    """
+    if is_doc(request):
+        if request.method == 'POST':
+            form = DoctorAdmitPatientForm(data=request.POST)
+            if form.is_valid():
+                patient = get_object_or_404(Patient, id=request.POST.get('patient'))
+                doctor = get_object_or_404(Doctor, id=request.user.id)
+                proceed = False
+                for hospital in doctor.hospitals.all():
+                    if hospital.id == int(request.POST.get('hospital')):
+                        proceed = True
+                if patient.current_hospital_id == 0 and proceed:
+                    hospital = get_object_or_404(Hospital, id=request.POST.get('hospital'))
+                    post_checked_hospital_id = request.POST.get('hospital')
+                    patient.current_hospital_id = post_checked_hospital_id
+                    patient.is_checked_in = True
+                    patient.number_hospital_visits += 1
+                    patient.checked_in_hospital = hospital
+                    if patient.current_hospital_id != patient.main_hospital.id:
+                        hospital.number_patients += 1
+                    patient.temp_checked_in_time = timezone.now()
+                    hospital.number_patient_visits += 1
+                    patient.save()
+                    hospital.save()
+                    log_activity(action='Patient ' + str(
+                        patient.id) + '(' + patient.get_full_name() + ')' + ' admitted into hospital ' + str(
+                        hospital.id) + '(' + hospital.hospital_name + ') For the following reason: "' +
+                                        request.POST.get('reason') + '"', request=request)
+                    return view_patients(request, True, "Patient Admitted!")
+                else:
+                    if proceed:
+                        return render(request, 'health/error_template.html',
+                                      {'message': "Patient already admitted, discharge them first"})
+                    else:
+                        return render(request, 'health/error_template.html',
+                                      {'message': "You are not allowed to admit " +
+                                                  "patients to hospitals you do not work at"})
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "There were errors in your form:", 'errors': form.errors})
+        else:
+            form = DoctorAdmitPatientForm()
+            return render(request, 'health/admit_patient.html', {'form': form})
+
+    elif is_nurse(request):
+        nurse = get_object_or_404(Nurse, id=request.user.pk)
+        if request.method == 'POST':
+            form = NurseAdmitPatientForm(data=request.POST)
+            if form.is_valid():
+                patient = get_object_or_404(Patient, id=request.POST.get('patient'))
+                if patient.current_hospital_id == 0:
+                    patient.current_hospital_id = nurse.working_hospital.id
+                    patient.is_checked_in = True
+                    patient.checked_in_hospital = nurse.working_hospital
+                    patient.number_hospital_visits += 1
+                    patient.temp_checked_in_time = timezone.now()
+                    patient.save()
+                    log_activity(action='Patient ' + str(
+                        patient.id) + '(' + patient.get_full_name() + ')' + ' admitted into hospital ' + str(
+                        nurse.working_hospital.id) + '(' + nurse.working_hospital.hospital_name +
+                                        ') For the following reason: "' + request.POST.get('reason') +
+                                        '"', request=request)
+                    return view_patients(request, True, "Patient admitted!")
+                else:
+                    return render(request, 'health/error_template.html',
+                                  {'message': "Patient already admitted, discharge them first"})
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "There were errors in your form:", 'errors': form.errors})
+        else:
+            form = NurseAdmitPatientForm()
+            return render(request, 'health/admit_patient.html', {'form': form})
+    else:
+        return render(request, "health/notFound.html")
+
+
+def transfer_patient(request, patient_id='0'):
+    if is_doc(request) or request.user.is_staff:
+        if is_doc(request):
+            doctor = get_object_or_404(Doctor, id=request.user.id)
+        if request.method == 'POST':
+            if request.user.is_staff:
+                form = DoctorTransferPatientForm(request.POST, doctor=None, patient_id=patient_id)
+            else:
+                form = DoctorTransferPatientForm(request.POST, doctor=doctor, patient_id=patient_id)
+            if form.is_valid():
+                if patient_id != '0':
+                    patient = get_object_or_404(Patient, id=patient_id)
+                else:
+                    patient = get_object_or_404(Patient, username=request.POST.get('patient'))
+                patient_discharge(request, patient.id, transfer=True)
+                # have to re-acquire patient due to change by discharge
+                patient = get_object_or_404(Patient, id=patient.id)
+                if patient.current_hospital_id == 0:
+                    hospital = get_object_or_404(Hospital, id=request.POST.get('hospital'))
+                    post_checked_hospital_id = request.POST.get('hospital')
+                    patient.current_hospital_id = post_checked_hospital_id
+                    patient.checked_in_hospital = hospital
+                    patient.is_checked_in = True
+                    patient.number_hospital_visits += 1
+                    if patient.current_hospital_id != patient.main_hospital.id:
+                        hospital.number_patients += 1
+                    patient.temp_checked_in_time = timezone.now()
+                    hospital.number_patient_visits += 1
+                    patient.save()
+                    hospital.save()
+                    log_activity(action='Patient ' + str(
+                        patient.id) + '(' + patient.get_full_name() + ')' + ' transferred to hospital ' + str(
+                        hospital.id) + '(' + hospital.hospital_name + ') For the following reason: "' +
+                                        request.POST.get('reason') + '"', request=request)
+                    return view_patients(request, True, "Patient Transferred!")
+                else:
+                    return render(request, 'health/error_template.html',
+                                  {'message': "Patient already admitted, discharge them first"})
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "There were errors in your form:", 'errors': form.errors})
+        else:  # request.method == GET
+            """
+            if patient_id:  # Discharge before transfer
+                patient = get_object_or_404(Patient, id=patient_id)
+                patient.is_checked_in = False
+                hospital = patient.main_hospital
+                checked_in_hospital = Hospital.objects.get(id=patient.current_hospital_id)
+                if patient.current_hospital_id != hospital.id:
+                    checked_in_hospital.number_patients -= 1
+                    checked_in_hospital.save()
+                patient.current_hospital_id = 0
+                patient.temp_check_out_time = timezone.now()
+                patient.avg_hospital_visit_time = ((patient.number_hospital_visits - 1) *
+                                                   patient.avg_hospital_visit_time +
+                                                   (sdi(str(patient.temp_check_in_time)) - sdi(str(
+                                                       patient.temp_check_out_time)))) / patient.number_hospital_visits
+
+                hospital.average_number_hospital_visits_per_patient = (
+                                                                          hospital.average_number_hospital_visits_per_patient *
+                                                                          hospital.number_patients +
+                                                                          patient.number_hospital_visits) / \
+                                                                      hospital.number_patients
+
+                patient.save()
+                hospital.save()
+                """
+            if request.user.is_staff:
+                form = DoctorTransferPatientForm(doctor=None, patient_id=patient_id)
+            else:
+                form = DoctorTransferPatientForm(doctor=doctor, patient_id=patient_id)
+            return render(request, 'health/admit_patient.html', {'form': form})
+    else:
+        return render(request, 'health/notFound.html')
+
+
+def patient_discharge(request, patient_id, transfer=False):  # TODO activity log this
+    """
+    Discharge a patient from a hospital
+    :param request: web request, possibly containing POST information
+    :param patient_id: the patient identification number
+    :return: a patient that is discharged
+    """
+    if is_doc(request) or (request.user.is_staff and transfer):  # can only discharge as admin if transferring
+        if Patient.objects.filter(id=patient_id).exists():
+            patient = get_object_or_404(Patient, id=patient_id)
+            if is_doc(request):
+                doctor = get_object_or_404(Doctor, id=request.user.id)
+                if patient.checked_in_hospital not in doctor.hospitals.all():
+                    if transfer == False:
+                        return render(request, 'health/error_template.html',
+                                      {'message': "You cannot discharge a patient from a hospital you do not work at"})
+            patient.is_checked_in = False
+            hospital = patient.main_hospital
+            checked_in_hospital = Hospital.objects.get(id=patient.current_hospital_id)
+            if patient.current_hospital_id != hospital.id:
+                checked_in_hospital.number_patients -= 1
+                checked_in_hospital.save()
+            patient.current_hospital_id = 0
+            patient.save()
+            patient.checked_in_hospital = None
+            patient.temp_check_out_time = timezone.now()
+            patient.avg_hospital_visit_time = ((patient.number_hospital_visits - 1) * patient.avg_hospital_visit_time +
+                                               (sdi(str(patient.temp_check_in_time)) -
+                                                sdi(str(patient.temp_check_out_time)))) / patient.number_hospital_visits
+            hospital.average_number_hospital_visits_per_patient = (hospital.average_number_hospital_visits_per_patient *
+                                                                   hospital.number_patients +
+                                                                   patient.number_hospital_visits) / hospital.number_patients
+            patient.save()
+            hospital.save()
+
+            if not patient.is_checked_in:
+                return view_patients(request, True, "Patient discharged!")
+            else:
+                return render(request, 'health/error_template.html',
+                              {'message': "ERROR: Please contact your nearest administrator"})
+        else:
+            return render(request, 'health/error_template.html', {'message': "No such patient exists!"})
+    else:
+        return render(request, 'health/notFound.html')
+
+
+def view_statistics(request, patient=None, hospital=None):
+    """
+    View the system statistics
+    :param request: web request, possibly containing POST information
+    :param patient: patient you want to see
+    :param hospital: hospital they are at
+    :return: the stats
+    """
+    if request.user.is_staff:
+        if patient is None and hospital is None:
+            if request.method == "POST":
+                form = ViewStatisticsForm(request.POST)
+                if form.is_valid():
+                    hospital_id = request.POST.get('hospital')
+                    patient_id = request.POST.get('patient')
+                    prescription_id = request.POST.get('prescription')
+                else:
+                    return render(request, 'health/error_template.html',
+                                  {'message': "There were errors in your log search form: ", 'errors': form.errors})
+            else:
+                form = ViewStatisticsForm()
+                return render(request, 'health/log_search.html', {'form': form})
+            if hospital_id == '' and patient_id == '':
+                return render(request, 'health/error_template.html',
+                              {'message': "Please select either a hospital or a patient"})
+            elif patient_id != '':
+                patient = get_object_or_404(Patient, id=patient_id)
+                avg_hospital_visit_time = patient.avg_hospital_visit_time
+                number_hospital_visits = patient.number_hospital_visits
+                return render(request, 'health/patient_stats.html',
+                              {'message': "Patient statistics for: " + patient.username,
+                               'avg_hospital_visit_time': avg_hospital_visit_time,
+                               'number_hospital_visits': number_hospital_visits})
+            elif prescription_id != '':
+                prescription = get_object_or_404(Prescription, id=prescription_id)
+                times_prescribed = {'times prescribed': prescription.times_prescribed}
+                return render(request, 'health/error_template.html', {'message': "Times prescribed for " +
+                                                                                 str(prescription.prescription_name),
+                                                                      'errors': times_prescribed})
+            elif hospital_id != '':
+                hospital = get_object_or_404(Hospital, id=hospital_id)
+                number_patients = hospital.number_patients
+                number_patient_visits = hospital.number_patient_visits
+                average_number_hospital_visits_per_patient = hospital.average_number_hospital_visits_per_patient
+                average_patient_stay_time = hospital.average_patient_stay_time
+                return render(request, 'health/hospital_stats.html', {'message': 'Hospital stats for ' +
+                                                                                 str(hospital.hospital_name),
+                                                                      'number_patients': number_patients,
+                                                                      'number_patient_visits': number_patient_visits,
+                                                                      'average_number_hospital_visits_per_patient':
+                                                                          average_number_hospital_visits_per_patient,
+                                                                      'average_patient_stay_time':
+                                                                          average_patient_stay_time})
+    else:
+        return render(request, 'health/notFound.html')
+
+
+def is_doc(request):
+    """
+    sees if a user is a doctor
+    :param request: web request, possibly containing POST information
+    :return: whether of not he is a doctor
+    """
+    for group in request.user.groups.all():
+        if group.name == "Doctor":
+            return True
+    return False
+
+
+def is_nurse(request):
+    """
+    sees if a user is a nurse
+    :param request: web request, possibly containing POST information
+    :return: whether of not he is a doctor
+    """
+    for group in request.user.groups.all():
+        if group.name == "Nurse":
+            return True
+    return False
+
+
+def is_patient(request):
+    """
+    sees if a user is a patient
+    :param request: web request, possibly containing POST information
+    :return: whether of not he is a doctor
+    """
+    for group in request.user.groups.all():
+        if group.name == "Patient":
+            return True
+    return False

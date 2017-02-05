@@ -1,0 +1,9 @@
+
+# __init__.py
+# from app.models.module1 import MyClass
+# from app.models.module2 import AnotherClass, function_one
+# __all__ = ['User', 'AnotherClass', 'function_one']
+
+from health.models.user import User
+from health.models.actor import Actor
+ __all__ = ('User', 'Actor')

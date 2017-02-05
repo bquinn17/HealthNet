@@ -1,0 +1,13 @@
+from django.contrib import admin
+from health.models import Patient
+from health.models import Appointment
+from health.models import Patient
+from health.models import Doctor
+
+<<<<<<< .mine
+admin.site.register(Patient)
+=======
+admin.site.register(Patient)
+admin.site.register(Appointment)
+admin.site.register(Doctor)
+>>>>>>> .r80

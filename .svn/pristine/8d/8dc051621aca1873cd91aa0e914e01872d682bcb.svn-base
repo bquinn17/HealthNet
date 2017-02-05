@@ -1,0 +1,13 @@
+from django.db import models
+
+
+# Create your models here.
+
+class Appointment(models.Model):
+    date = models.DateTimeField('Scheduled Date')
+    description = models.CharField(max_length=200)
+
+
+class Hospital(models.Model):
+    hospital_name = models.CharField(max_length=50)
+    # hospital_id = Primary key is implied

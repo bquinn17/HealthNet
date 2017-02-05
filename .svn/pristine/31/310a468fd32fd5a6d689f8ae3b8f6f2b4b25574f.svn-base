@@ -1,0 +1,9 @@
+{% extends "health/base.html" %}
+
+{% block content %}
+    <div class ="col-lg-6 col-lg-offset-3">
+        <h1>404 Error</h1>
+        <p>This page was not found!</p>
+        <p><a href="/home/">Return to Homepage</a> </p>
+    </div>
+{% endblock %}

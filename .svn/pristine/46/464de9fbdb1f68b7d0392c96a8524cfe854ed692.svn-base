@@ -1,0 +1,12 @@
+{% extends 'health/base.html' %}
+{% block content %}
+
+    <div class = "col-lg-6 col-lg-offset-3">
+
+        <h1>Patient Discharged</h1>
+
+        <a href = "/accounts/patients/" class = "btn btn-lg btn-block btn-primary">Return to List of Patients</a>
+
+    </div>
+
+{% endblock %}

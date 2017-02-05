@@ -1,0 +1,34 @@
+from django.db import models
+
+# Create your old_code here.
+from django import forms
+from django.contrib.auth.models import User
+
+
+class Patient(User, models.Model):
+    user = models.OneToOneField(User)
+    # class Meta:
+    #     app_name = 'health'
+    #     db_table = 'health_Patient'
+
+    # prescriptions = []
+    # test_results = []
+    # emergency_contact = old_code.CharField(max_length=50)
+
+    # Should we add hospital as a field?
+
+    # def update_profile(self, username, name, email, contact):
+    #     super.username = username
+    #     super.name = name
+    #     super.email = email
+    #     self.emergency_contact = contact
+    #     # TODO 
+    #     return
+    #
+    # def export_info(self):
+    #     for prescription in self.perscriptions:
+    #         print(prescription)
+    #     for test_result in self.test_results:
+    #         print(test_result)
+    #     # TODO
+    #     return

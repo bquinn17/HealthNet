@@ -1,0 +1,29 @@
+{% extends "health/base.html" %}
+
+{% load staticfiles %}
+{% block content %}
+    <div class ="col-lg-6 col-lg-offset-3">
+        <div id = "text" class = "row">
+            <h1>404 Biden</h1>
+            <p>This page was not found!</p>
+        </div>
+        <p><a href="/" class="btn btn-lg btn-success btn-block">Return to Homepage</a> </p>
+        <div class = "row">
+            <img id = "joeB" src = "{% static 'health/img/yeah.jpg' %}" style = "opacity: 0.0"/>
+        </div>
+    </div>
+
+    <script>
+
+        $(document).ready(function(){
+
+            window.setTimeout(easter(), 10000);
+
+        });
+
+        function easter(){
+            $('#joeB').animate({opacity: '1.0'}, {duration: 10000});
+        }
+
+    </script>
+{% endblock %}

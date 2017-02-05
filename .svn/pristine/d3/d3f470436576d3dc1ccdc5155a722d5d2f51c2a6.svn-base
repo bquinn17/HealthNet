@@ -1,0 +1,23 @@
+from django import forms
+
+from .models import Patient
+
+
+class PatientRegistrationForm(forms.ModelForm):
+
+    class Meta:
+        model = Patient
+        fields = ('email', 'first_name', 'last_name', 'password',)
+
+    email = forms.CharField(widget=forms.EmailInput(), required=True)
+    first_name = forms.CharField(max_length=50)
+    last_name = forms.CharField(max_length=50)
+    password = forms.PasswordInput(render_value=False)
+
+
+# class PatientForm(forms.ModelForm):  # form for patient updating basic profile info (email, emergency contact)
+#     class Meta:
+#         model = Patient
+#         email = forms.EmailField()
+#         emergency_contact = forms.CharField()
+#         fields = ['email', 'emergency_contact']
