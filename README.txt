@@ -1,0 +1,61 @@
+HealthNet by Team 1 - ForceX
+
+INSTALLATION
+
+To get the environment setup, your machine must include the following:
+
+-python 3
+-django 1.9
+
+To determine if you have django 1.9, run the command in cmd:
+
+$ python -m django version
+
+If a number appears that is 1.9.1,
+then you're all set
+
+If not, run this command:
+
+$ python -m pip install django==1.9
+
+
+RUNNING THE SERVER
+
+To get the server running, download the code and extract it
+
+In cmd, navigate to the project. There should be a file called
+manage.py in the folder.
+
+Then start the server by running the command in cmd:
+
+$ python manage.py runserver 8000
+
+The server should now be running on 127.0.0.1:8000
+This can be typed into a browser to access the website
+
+
+USING THE SERVER
+
+These are the items already set up in the system
+The admin login is
+Login: admin@health.net
+Password: abc123456
+
+The doctor login is
+Login: DoctorOz@health.net
+Password: abc123456
+
+The nurse login is
+Login: NurseJoy@health.net
+Password: abc123456
+
+The patient login is
+Login: PatientOne@health.net
+Password: abc123456
+
+The hospitals are
+RIT
+
+The Prescriptions are
+Advil 200mg
+Tums 200mg
